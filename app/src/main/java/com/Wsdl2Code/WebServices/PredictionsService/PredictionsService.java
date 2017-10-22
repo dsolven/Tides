@@ -38,7 +38,7 @@ public class PredictionsService {
 
     //    public String NAMESPACE ="http://client.ws.shc.gc.ca";
     public String NAMESPACE = "https://ws-shc.qc.dfo-mpo.gc.ca/predictions";
-    public String url = "";
+    public String url = "https://ws-shc.qc.dfo-mpo.gc.ca/predictions";
     public int timeOut = 180;
     public IWsdl2CodeEvents eventHandler;
     public SoapProtocolVersion soapVersion;

@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">Tides</string>
+    <string name="prediction_error_network" translatable="true">Network error. Unable to retrieve tide data from webservice.</string>
 </resources>
