@@ -5,11 +5,11 @@
     android:orientation="vertical"
     >
 
-    <ImageView
+    <com.jjoe64.graphview.GraphView
+        android:id="@+id/graph_main"
+        android:layout_height="200dp"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:src="@drawable/example_tide_graph"
-        android:contentDescription="Example graph. To be replaced with graphView"
+
         />
     <Button
         android:id="@+id/button_pushToSend"
