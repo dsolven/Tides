@@ -15,20 +15,38 @@ public class TidesContract {
     // The base content URI = "content://" + <authority>
     public static final Uri BASE_CONTENT_URI = Uri.parse("content://" + AUTHORITY);
 
+    // Path for the entire wl15 directory
+    public static final String PATH_WL15 = "wl15";
+
+    // Path for the entire station_info directory
+    public static final String PATH_STATION_INFO = "station_info";
+
     // TidesEntry is the static inner class that defines the contents of the db table
     public static final class TidesEntry implements BaseColumns {
 
-        // Tides_wl15 table and column names
-        public static final String TABLE_NAME = "tides_wl15";
+        // Common column names
+        public static final String COLUMN_STATION_ID = "station_id";
 
+        // tides_wl15 table and column names
+        public static final String TABLE_WL15 = "tides_wl15";
         public static final String COLUMN_VALUE = "value";
         public static final String COLUMN_DATE = "date";
-        public static final String COLUMN_STATION_ID = "station_id";
+
+        // tides_station_info table and column names
+        public static final String TABLE_STATION_INFO = "tides_station_info";
+        public static final String COLUMN_STATION_LON = "station_longitude";
+        public static final String COLUMN_STATION_LAT = "station_latitude";
         public static final String COLUMN_STATION_NAME = "station_name";
+        // TODO: 10/25/2017 Ensure these are the correct columns for the database
 
-        // Tides_hilo table and column names
-        // TODO: 10/22/2017 SHould be a different Entry?
+        // Content Uri = base content Uri + path
+        public static final Uri WL15_CONTENT_URI =
+                BASE_CONTENT_URI.buildUpon().appendPath(PATH_WL15).build();
 
+
+        // Content Uri = base content Uri + path
+        public static final Uri STATION_INFO_CONTENT_URI =
+                BASE_CONTENT_URI.buildUpon().appendPath(PATH_STATION_INFO).build();
 
     }
 }

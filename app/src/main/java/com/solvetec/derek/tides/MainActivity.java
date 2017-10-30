@@ -23,12 +23,14 @@ import com.Wsdl2Code.WebServices.PredictionsService.Data;
 import com.Wsdl2Code.WebServices.PredictionsService.Metadata;
 import com.Wsdl2Code.WebServices.PredictionsService.PredictionsService;
 import com.Wsdl2Code.WebServices.PredictionsService.ResultSet;
+import com.Wsdl2Code.WebServices.PredictionsService.SearchParams;
 import com.Wsdl2Code.WebServices.PredictionsService.Station;
 import com.Wsdl2Code.WebServices.PredictionsService.VectorMetadata;
 
 import com.jjoe64.graphview.GraphView;
 import com.jjoe64.graphview.series.DataPoint;
 import com.jjoe64.graphview.series.LineGraphSeries;
+import com.solvetec.derek.tides.Utils.PredictionServiceHelper;
 import com.solvetec.derek.tides.data.TidesContract.TidesEntry;
 
 import java.text.ParseException;
@@ -36,14 +38,13 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
 
-// TODO: 10/21/2017 Fix compile support versions in gradle file.
 public class MainActivity extends AppCompatActivity
         implements DayListAdapter.ListItemClickListener {
 
     private static final String TAG = MainActivity.class.getSimpleName();
     private DayListAdapter mDayListAdapter;
     private RecyclerView mDayListRecyclerView;
-    private static final int NUM_DAYS_TO_DISPLAY  = 7;
+    private static final int NUM_DAYS_TO_DISPLAY = 14;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -69,15 +70,32 @@ public class MainActivity extends AppCompatActivity
         mDayListAdapter = new DayListAdapter(NUM_DAYS_TO_DISPLAY, this);
         mDayListRecyclerView.setAdapter(mDayListAdapter);
 
+        // TODO: 10/27/2017 Remember to clean up database on every start: If entry is for older than yesterday, remove it.
+
 
         // TODO: 10/21/2017 Remove the button, once I have a database and contentProvider to handle the transactions.
-        Button button = (Button) findViewById(R.id.button_pushToSend);
-        button.setOnClickListener(new View.OnClickListener() {
+        Button buttonTestAll = (Button) findViewById(R.id.button_test_all_predictions);
+        buttonTestAll.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void onClick(View view) {
-                // 07577;;White Rock
-                // 07577,49.0211,-122.8058
-                new testPredictionsAsync().execute();
+            public void onClick(View v) {
+                new PredictionsTestAllAsync().execute();
+            }
+        });
+
+        Button buttonTestSearch = (Button) findViewById(R.id.button_test_search_prediction);
+        buttonTestSearch.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                SearchParams sp = PredictionServiceHelper.makeExampleSearchParams();
+                new PredictionsSearchAsync().execute(sp);
+            }
+        });
+
+        Button buttonTestMetadata = (Button) findViewById(R.id.button_test_metadata_prediction);
+        buttonTestMetadata.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                new PredictionsStationInfoAsync().execute();
             }
         });
     }
@@ -91,23 +109,76 @@ public class MainActivity extends AppCompatActivity
     @Override
     public void onListItemClick(int clickedItemIndex) {
         // TODO: 10/21/2017 Make this do something... Change the main graphview? Open a new activity showing details?
+        // TODO: 10/25/2017 Why isn't this showing a nice click animation?
         String toastMessage = "Item # " + clickedItemIndex + " clicked.";
         Toast.makeText(this, toastMessage, Toast.LENGTH_SHORT).show();
     }
 
     /**
-     * Testing calls to PredictionsService, and verify each SOAP_ACTION actually works.
+     * Async task to query Predictions webservice.
+     * Responsible for pulling data from webservice, parsing it, and placing it into the wl15
+     * database table.
      */
-    class testPredictionsAsync extends AsyncTask<String, Void, String> {
+    class PredictionsSearchAsync extends AsyncTask<SearchParams, Void, String> {
+        @Override
+        protected void onPreExecute() {
+
+        }
+
+        @Override
+        protected String doInBackground(SearchParams... params) {
+            SearchParams sp = params[0];
+            PredictionsService predictionsService = new PredictionsService();
+            predictionsService.setTimeOut(10); // The default of 180ms was often timing out.
+
+            ResultSet searchResult = predictionsService.search(sp);
+            ContentValues[] cvs = PredictionServiceHelper.parseSearchResultSet(searchResult);
+
+            getContentResolver().bulkInsert(TidesEntry.WL15_CONTENT_URI, cvs);
+            // TODO: 10/26/2017 What to return? Should I do the database insert here?
+            return cvs[0].get(TidesEntry.COLUMN_VALUE).toString();
+        }
+
+        @Override
+        protected void onProgressUpdate(Void... values) {
+
+        }
 
         @Override
         protected void onPostExecute(String s) {
-            TextView textView = (TextView) findViewById(R.id.tv_test_textview);
-            if(s != null) {
-                textView.setText(s);
-            } else {
-                textView.setText(getString(R.string.prediction_error_network));
-            }
+            Toast.makeText(MainActivity.this, "WL15 search completed. First entry is: " + s, Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    /**
+     * Async task to query station metadata from the webservice.
+     */
+    class PredictionsStationInfoAsync extends AsyncTask<Void, Void, String> {
+        @Override
+        protected String doInBackground(Void... params) {
+            PredictionsService predictionsService = new PredictionsService();
+            predictionsService.setTimeOut(10); // The default of 180ms was often timing out.
+            VectorMetadata vectorMetadata = predictionsService.getMetadata();
+            ContentValues[] cvs = PredictionServiceHelper.parseVectorMetadata(vectorMetadata);
+            // TODO: 10/26/2017 Parse vectorMetadata, to populate the station information database.
+            return cvs[0].get(TidesEntry.COLUMN_STATION_NAME).toString();
+        }
+
+        @Override
+        protected void onPostExecute(String s) {
+            Toast.makeText(MainActivity.this, "Station download complete. First station is: " + s, Toast.LENGTH_SHORT).show();
+        }
+    }
+
+
+    /**
+     * Testing calls to PredictionsService, and verify each SOAP_ACTION actually works.
+     */
+    class PredictionsTestAllAsync extends AsyncTask<String, Void, String> {
+
+        @Override
+        protected void onPostExecute(String s) {
+            Toast.makeText(MainActivity.this, "TestAllPredictions returned: " + s, Toast.LENGTH_SHORT).show();
         }
         @Override
         protected String doInBackground(String... params) {
@@ -123,80 +194,12 @@ public class MainActivity extends AppCompatActivity
             VectorMetadata vectorDataInfo = predictionsService.getDataInfo();
             VectorMetadata vectorMetaDataInfo = predictionsService.getMetadataInfo();
 
+            SearchParams sp = PredictionServiceHelper.makeExampleSearchParams();
+            ResultSet searchResult = predictionsService.search(sp);
 
-            ResultSet searchResult = predictionsService.search(
-                    "wl15",
-                    49.0,
-                    49.1,
-                    -122.9,
-                    -122.7,
-                    0.0,
-                    0.0,
-                    "2017-12-19 00:00:00",
-                    "2017-12-21 00:00:00",
-                    1,
-                    100,
-                    true,
-                    "",
-                    "asc");
-            ContentValues[] cvs = parseSearchResultSet(searchResult);
             return info;
         }
     }
 
-    // TODO: 10/22/2017 This won't pull all of the necessary info (only the database info, not the "is this data valid" metadata). This might not be the best architecture for this task...
 
-    /**
-     * This helper method parses the data returned from a search query, and places the
-     * relevant information into a CV ready to be added to the database.
-     *
-     * @param searchResult ResultSet returned from a predictionsService.search query.
-     * @return ContentValues containing all database-necessary data.
-     */
-    public ContentValues[] parseSearchResultSet(ResultSet searchResult) {
-        // TODO: 10/22/2017 Check for status. If not 200, throw error.
-        int size = searchResult.size;
-        ContentValues[] cvs = new ContentValues[size];
-
-        for (int i = 0; i < size; i++) {
-            Data d = searchResult.data.get(i);
-            ContentValues cv = new ContentValues();
-            cv.put(TidesEntry.COLUMN_VALUE, d.value);
-
-            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.CANADA);
-            try {
-                Date date = sdf.parse(d.boundaryDate.min); // min and max always contain the same info
-                cv.put(TidesEntry.COLUMN_DATE, date.getTime());
-            } catch (ParseException e) {
-                e.printStackTrace();
-            }
-
-            Station station = extractStationFromData(d);
-            cv.put(TidesEntry.COLUMN_STATION_ID, station.getStation_id());
-            cv.put(TidesEntry.COLUMN_STATION_NAME, station.getStation_name());
-            cvs[i] = cv;
-        }
-        return cvs;
-    }
-
-    public Station extractStationFromData(Data data) {
-        Station station = new Station();
-        int vectorSize = data.metadata.getPropertyCount();
-
-        for (int i = 0; i < vectorSize; i++) {
-            String name = data.metadata.get(i).name;
-            String value = data.metadata.get(i).value;
-            switch (name) {
-                case "station_id":
-                    station.setStation_id(value);
-                    break;
-                case "station_name":
-                    station.setStation_name(value);
-                    break;
-                default:
-                    throw new UnsupportedOperationException("Data.metadata should not contain this name: " + name);
-            }
-        }
-        return station;
-    }
 }

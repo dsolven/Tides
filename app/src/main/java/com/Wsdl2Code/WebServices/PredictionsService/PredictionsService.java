@@ -958,6 +958,10 @@ public class PredictionsService {
         }.execute();
     }
 
+    public ResultSet search(SearchParams p) {
+        return search(p.dataName, p.latitudeMin, p.latitudeMax, p.longitudeMin, p.longitudeMax, p.depthMin, p.depthMax, p.dateMin, p.dateMax, p.start, p.sizeMax, p.metadata, p.metadataSelection, p.order);
+    }
+
     public ResultSet search(String dataName, double latitudeMin, double latitudeMax, double longitudeMin, double longitudeMax, double depthMin, double depthMax, String dateMin, String dateMax, int start, int sizeMax, boolean metadata, String metadataSelection, String order) {
         return search(dataName, latitudeMin, latitudeMax, longitudeMin, longitudeMax, depthMin, depthMax, dateMin, dateMax, start, sizeMax, metadata, metadataSelection, order, null);
     }
