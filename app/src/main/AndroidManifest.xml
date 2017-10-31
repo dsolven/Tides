@@ -19,6 +19,10 @@
             </intent-filter>
 
         </activity>
+
+        <activity
+            android:name=".SettingsActivity"
+            android:parentActivityName=".MainActivity" />
         <provider
             android:authorities="com.solvetec.derek.tides"
             android:name="com.solvetec.derek.tides.data.TidesContentProvider"
