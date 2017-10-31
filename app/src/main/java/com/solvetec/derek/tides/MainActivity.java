@@ -3,10 +3,12 @@ package com.solvetec.derek.tides;
 import android.content.ContentValues;
 import android.content.Intent;
 import android.database.Cursor;
+import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v4.app.LoaderManager;
 import android.support.v4.content.AsyncTaskLoader;
+import android.support.v4.content.CursorLoader;
 import android.support.v4.content.Loader;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
@@ -34,6 +36,7 @@ import com.Wsdl2Code.WebServices.PredictionsService.VectorMetadata;
 import com.jjoe64.graphview.GraphView;
 import com.jjoe64.graphview.series.DataPoint;
 import com.jjoe64.graphview.series.LineGraphSeries;
+import com.solvetec.derek.tides.Utils.GraphViewUtils;
 import com.solvetec.derek.tides.Utils.PredictionServiceHelper;
 import com.solvetec.derek.tides.data.TidesContract.TidesEntry;
 
@@ -43,12 +46,17 @@ import java.util.Date;
 import java.util.Locale;
 
 public class MainActivity extends AppCompatActivity
-        implements DayListAdapter.ListItemClickListener {
+        implements DayListAdapter.ListItemClickListener,
+        LoaderManager.LoaderCallbacks {
 
     private static final String TAG = MainActivity.class.getSimpleName();
     private DayListAdapter mDayListAdapter;
     private RecyclerView mDayListRecyclerView;
+    private GraphView mGraphView;
+    private Cursor mGraphCursor;
     private static final int NUM_DAYS_TO_DISPLAY = 14;
+
+    private static final int ID_WL15_LOADER = 44;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -56,7 +64,7 @@ public class MainActivity extends AppCompatActivity
         setContentView(R.layout.activity_main);
 
         // Setup the graphView
-        GraphView graph = (GraphView) findViewById(R.id.graph_main);
+        mGraphView = (GraphView) findViewById(R.id.graph_main);
         LineGraphSeries<DataPoint> series = new LineGraphSeries<>(new DataPoint[]{
                 new DataPoint(0, 1),
                 new DataPoint(1, 5),
@@ -64,7 +72,7 @@ public class MainActivity extends AppCompatActivity
                 new DataPoint(3, 2),
                 new DataPoint(4, 6)
         });
-        graph.addSeries(series);
+        mGraphView.addSeries(series);
 
         // Setup the list of days
         mDayListRecyclerView = (RecyclerView) findViewById(R.id.rv_list_of_days);
@@ -75,6 +83,10 @@ public class MainActivity extends AppCompatActivity
         mDayListRecyclerView.setAdapter(mDayListAdapter);
 
         // TODO: 10/27/2017 Remember to clean up database on every start: If entry is for older than yesterday, remove it.
+
+        getSupportLoaderManager().initLoader(ID_WL15_LOADER, null, this);
+
+        // TODO: 10/31/2017 Immediately start a data sync here.
 
 
         // TODO: 10/21/2017 Remove the button, once I have a database and contentProvider to handle the transactions.
@@ -136,6 +148,38 @@ public class MainActivity extends AppCompatActivity
                 return super.onOptionsItemSelected(item);
 
         }
+    }
+
+    @Override
+    public Loader<Cursor> onCreateLoader(int id, Bundle args) {
+        switch (id) {
+            case ID_WL15_LOADER:
+                Uri wl15QueryUri = TidesEntry.WL15_CONTENT_URI;
+                return new CursorLoader(this,
+                        wl15QueryUri,
+                        null,
+                        null,
+                        null,
+                        null);
+            default:
+                throw new RuntimeException("Loader not implemented: " + id);
+        }
+    }
+
+    @Override
+    public void onLoadFinished(Loader loader, Object data) {
+        mGraphCursor = (Cursor) data;
+        if (mGraphCursor.getCount() != 0) {
+            LineGraphSeries<DataPoint> series = GraphViewUtils.getSeries(mGraphCursor);
+            mGraphView.removeAllSeries();
+            mGraphView.addSeries(series);
+        }
+    }
+
+
+    @Override
+    public void onLoaderReset(Loader loader) {
+        mGraphCursor = null;
     }
 
     /**
