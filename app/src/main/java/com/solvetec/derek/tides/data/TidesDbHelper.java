@@ -14,7 +14,7 @@ public class TidesDbHelper extends SQLiteOpenHelper {
 
     private static final String DATABASE_NAME = "tidesDb.db";
 
-    private static final int DATABASE_VERSION = 1;
+    private static final int DATABASE_VERSION = 2;
 
     public TidesDbHelper(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
@@ -22,6 +22,13 @@ public class TidesDbHelper extends SQLiteOpenHelper {
 
 
     private static final String CREATE_TABLE_WL15 = "CREATE TABLE " + TidesEntry.TABLE_WL15 + " (" +
+            TidesEntry._ID + " INTEGER PRIMARY_KEY, " +
+            TidesEntry.COLUMN_DATE + " INTEGER NOT NULL, " +
+            TidesEntry.COLUMN_VALUE + " REAL NOT NULL, " +
+            TidesEntry.COLUMN_STATION_ID + " INTEGER NOT NULL, " +
+            " UNIQUE (" + TidesEntry.COLUMN_DATE + ") ON CONFLICT REPLACE);";
+
+    private static final String CREATE_TABLE_HILO = "CREATE TABLE " + TidesEntry.TABLE_HILO + " (" +
             TidesEntry._ID + " INTEGER PRIMARY_KEY, " +
             TidesEntry.COLUMN_DATE + " INTEGER NOT NULL, " +
             TidesEntry.COLUMN_VALUE + " REAL NOT NULL, " +
@@ -46,6 +53,7 @@ public class TidesDbHelper extends SQLiteOpenHelper {
     @Override
     public void onCreate(SQLiteDatabase db) {
         db.execSQL(CREATE_TABLE_WL15);
+        db.execSQL(CREATE_TABLE_HILO);
         db.execSQL(CREATE_TABLE_STATION_INFO);
     }
 
@@ -53,6 +61,7 @@ public class TidesDbHelper extends SQLiteOpenHelper {
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
         // TABLE_WL15 and TABLE_STATION_INFO only caches data, so simply wipe on upgrade
         db.execSQL("DROP TABLE IF EXISTS " + TidesEntry.TABLE_WL15);
+        db.execSQL("DROP TABLE IF EXISTS " + TidesEntry.TABLE_HILO);
         db.execSQL("DROP TABLE IF EXISTS " + TidesEntry.TABLE_STATION_INFO);
         onCreate(db);
     }

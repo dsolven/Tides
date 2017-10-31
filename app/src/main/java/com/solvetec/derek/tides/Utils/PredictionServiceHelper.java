@@ -23,7 +23,7 @@ import java.util.regex.Pattern;
 
 public class PredictionServiceHelper {
 
-    public static SearchParams makeExampleSearchParams() {
+    public static SearchParams makeExampleWl15SearchParams() {
         return new SearchParams(
                 "wl15",
                 49.0,
@@ -34,6 +34,24 @@ public class PredictionServiceHelper {
                 0.0,
                 "2017-12-19 00:00:00",
                 "2017-12-21 00:00:00",
+                1,
+                100,
+                true,
+                "",
+                "asc");
+    }
+
+    public static SearchParams makeExampleHiloSearchParams() {
+        return new SearchParams(
+                "hilo",
+                49.0,
+                49.1,
+                -122.9,
+                -122.7,
+                0.0,
+                0.0,
+                "2017-12-19 00:00:00",
+                "2018-12-21 00:00:00",
                 1,
                 100,
                 true,

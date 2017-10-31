@@ -19,11 +19,12 @@ public class TidesContentProvider extends ContentProvider {
 
     // Entire table directory
     public static final int WL15 = 100;
-    public static final int STATION_INFO = 200;
+    public static final int HILO = 200;
+    public static final int STATION_INFO = 300;
 
     // Individual entries from table
     public static final int WL15_WITH_DATE = 101;
-    public static final int STATION_INFO_WITH_STATION_ID = 201;
+    public static final int STATION_INFO_WITH_STATION_ID = 301;
 
 
     private static final UriMatcher sUriMatcher = buildUriMatcher();
@@ -33,6 +34,7 @@ public class TidesContentProvider extends ContentProvider {
 
         uriMatcher.addURI(TidesContract.AUTHORITY, TidesContract.PATH_WL15, WL15);
         uriMatcher.addURI(TidesContract.AUTHORITY, TidesContract.PATH_WL15 + "/#", WL15_WITH_DATE);
+        uriMatcher.addURI(TidesContract.AUTHORITY, TidesContract.PATH_HILO, HILO);
         uriMatcher.addURI(TidesContract.AUTHORITY, TidesContract.PATH_STATION_INFO, STATION_INFO);
         uriMatcher.addURI(TidesContract.AUTHORITY, TidesContract.PATH_STATION_INFO + "/#", STATION_INFO_WITH_STATION_ID);
         // TODO: 10/23/2017 What other things do we want to return from the db? Range of dates?
@@ -65,6 +67,14 @@ public class TidesContentProvider extends ContentProvider {
                 id = db.insert(TidesContract.TidesEntry.TABLE_WL15, null, values);
                 if (id > 0) {
                     returnUri = ContentUris.withAppendedId(TidesContract.TidesEntry.WL15_CONTENT_URI, id);
+                } else {
+                    throw new android.database.SQLException("Failed to insert row into " + uri);
+                }
+                break;
+            case HILO:
+                id = db.insert(TidesContract.TidesEntry.TABLE_HILO, null, values);
+                if (id > 0) {
+                    returnUri = ContentUris.withAppendedId(TidesContract.TidesEntry.HILO_CONTENT_URI, id);
                 } else {
                     throw new android.database.SQLException("Failed to insert row into " + uri);
                 }
@@ -121,6 +131,15 @@ public class TidesContentProvider extends ContentProvider {
                         null,
                         sortOrder);
                 break;
+            case HILO:
+                retCursor = db.query(TidesContract.TidesEntry.TABLE_HILO,
+                        projection,
+                        selection,
+                        selectionArgs,
+                        null,
+                        null,
+                        sortOrder);
+                break;
             case STATION_INFO:
                 retCursor = db.query(TidesContract.TidesEntry.TABLE_STATION_INFO,
                         projection,
@@ -155,6 +174,11 @@ public class TidesContentProvider extends ContentProvider {
             case WL15:
                 // Delete the whole table. Maybe useful as a nuke option?
                 tasksDeleted = db.delete(TidesContract.TidesEntry.TABLE_WL15, "*", null);
+                // TODO: 10/26/2017 Ensure this actually works, with the "*" whereClause.
+                break;
+            case HILO:
+                // Delete the whole table. Maybe useful as a nuke option?
+                tasksDeleted = db.delete(TidesContract.TidesEntry.TABLE_HILO, "*", null);
                 // TODO: 10/26/2017 Ensure this actually works, with the "*" whereClause.
                 break;
             case STATION_INFO:

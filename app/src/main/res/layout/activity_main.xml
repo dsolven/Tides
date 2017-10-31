@@ -12,10 +12,16 @@
 
         />
     <Button
-        android:id="@+id/button_test_search_prediction"
+        android:id="@+id/button_test_wl15_search_prediction"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Test Search Prediction" />
+        android:text="Test WL15 Search Prediction" />
+
+    <Button
+        android:id="@+id/button_test_hilo_search_prediction"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Test Hilo Search Prediction" />
 
     <Button
         android:id="@+id/button_test_all_predictions"

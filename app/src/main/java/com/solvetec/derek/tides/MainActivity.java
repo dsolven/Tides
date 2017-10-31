@@ -98,11 +98,20 @@ public class MainActivity extends AppCompatActivity
             }
         });
 
-        Button buttonTestSearch = (Button) findViewById(R.id.button_test_search_prediction);
-        buttonTestSearch.setOnClickListener(new View.OnClickListener() {
+        Button buttonTestWl15Search = (Button) findViewById(R.id.button_test_wl15_search_prediction);
+        buttonTestWl15Search.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                SearchParams sp = PredictionServiceHelper.makeExampleSearchParams();
+                SearchParams sp = PredictionServiceHelper.makeExampleWl15SearchParams();
+                new PredictionsSearchAsync().execute(sp);
+            }
+        });
+
+        Button buttonTestHiloSearch = (Button) findViewById(R.id.button_test_hilo_search_prediction);
+        buttonTestHiloSearch.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                SearchParams sp = PredictionServiceHelper.makeExampleHiloSearchParams();
                 new PredictionsSearchAsync().execute(sp);
             }
         });
@@ -114,6 +123,8 @@ public class MainActivity extends AppCompatActivity
                 new PredictionsStationInfoAsync().execute();
             }
         });
+
+
     }
 
     // DayListAdapter override methods
@@ -174,6 +185,8 @@ public class MainActivity extends AppCompatActivity
             mGraphView.removeAllSeries();
             mGraphView.addSeries(series);
         }
+        // TODO: 10/31/2017 else: throw up a toast or something?
+        
     }
 
 
@@ -187,24 +200,39 @@ public class MainActivity extends AppCompatActivity
      * Responsible for pulling data from webservice, parsing it, and placing it into the wl15
      * database table.
      */
-    class PredictionsSearchAsync extends AsyncTask<SearchParams, Void, String> {
+    class PredictionsSearchAsync extends AsyncTask<SearchParams, Void, String[]> {
         @Override
         protected void onPreExecute() {
 
         }
 
         @Override
-        protected String doInBackground(SearchParams... params) {
+        protected String[] doInBackground(SearchParams... params) {
             SearchParams sp = params[0];
             PredictionsService predictionsService = new PredictionsService();
             predictionsService.setTimeOut(10); // The default of 180ms was often timing out.
 
             ResultSet searchResult = predictionsService.search(sp);
-            ContentValues[] cvs = PredictionServiceHelper.parseSearchResultSet(searchResult);
+            ContentValues[] cvs = null;
+            String[] out = null;
+            switch (sp.dataName) {
+                case "wl15":
+                    cvs = PredictionServiceHelper.parseSearchResultSet(searchResult);
 
-            getContentResolver().bulkInsert(TidesEntry.WL15_CONTENT_URI, cvs);
-            // TODO: 10/26/2017 What to return? Should I do the database insert here?
-            return cvs[0].get(TidesEntry.COLUMN_VALUE).toString();
+                    getContentResolver().bulkInsert(TidesEntry.WL15_CONTENT_URI, cvs);
+                    // TODO: 10/26/2017 What to return? Should I do the database insert here?
+                    out = new String[]{sp.dataName, cvs[0].get(TidesEntry.COLUMN_VALUE).toString()};
+                    return out;
+                case "hilo":
+                    cvs = PredictionServiceHelper.parseSearchResultSet(searchResult);
+                    getContentResolver().bulkInsert(TidesEntry.HILO_CONTENT_URI, cvs);
+                    // TODO: 10/26/2017 What to return? Should I do the database insert here?
+                    out = new String[]{sp.dataName, cvs[0].get(TidesEntry.COLUMN_VALUE).toString()};
+                    return out;
+                default:
+                    throw new UnsupportedOperationException("Unsupported searchParam dataName: " + sp.dataName);
+            }
+
         }
 
         @Override
@@ -213,8 +241,8 @@ public class MainActivity extends AppCompatActivity
         }
 
         @Override
-        protected void onPostExecute(String s) {
-            Toast.makeText(MainActivity.this, "WL15 search completed. First entry is: " + s, Toast.LENGTH_SHORT).show();
+        protected void onPostExecute(String[] s) {
+            Toast.makeText(MainActivity.this, s[0] + " search completed. First entry is: " + s[1], Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -262,7 +290,7 @@ public class MainActivity extends AppCompatActivity
             VectorMetadata vectorDataInfo = predictionsService.getDataInfo();
             VectorMetadata vectorMetaDataInfo = predictionsService.getMetadataInfo();
 
-            SearchParams sp = PredictionServiceHelper.makeExampleSearchParams();
+            SearchParams sp = PredictionServiceHelper.makeExampleWl15SearchParams();
             ResultSet searchResult = predictionsService.search(sp);
 
             return info;
