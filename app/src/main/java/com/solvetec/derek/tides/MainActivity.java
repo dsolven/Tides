@@ -36,6 +36,7 @@ import com.Wsdl2Code.WebServices.PredictionsService.VectorMetadata;
 import com.jjoe64.graphview.GraphView;
 import com.jjoe64.graphview.series.DataPoint;
 import com.jjoe64.graphview.series.LineGraphSeries;
+import com.solvetec.derek.tides.Utils.DateUtils;
 import com.solvetec.derek.tides.Utils.GraphViewUtils;
 import com.solvetec.derek.tides.Utils.PredictionServiceHelper;
 import com.solvetec.derek.tides.data.TidesContract.TidesEntry;
@@ -44,6 +45,10 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
+
+
+// TODO: 10/31/2017 Google API: Remember to restrict the API to this app only.
+
 
 public class MainActivity extends AppCompatActivity
         implements DayListAdapter.ListItemClickListener,
@@ -56,7 +61,14 @@ public class MainActivity extends AppCompatActivity
     private Cursor mGraphCursor;
     private static final int NUM_DAYS_TO_DISPLAY = 14;
 
+    private Long mTimezoneOffset;
+
     private static final int ID_WL15_LOADER = 44;
+    private static final String PROJECTION_KEY = "PROJECTION_KEY";
+    private static final String SELECTION_KEY = "SELECTION_KEY";
+    private static final String SELECTION_ARGS_KEY = "SELECTION_ARGS_KEY";
+    private static final String SORT_BY_KEY = "SORT_BY_KEY";
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -84,7 +96,24 @@ public class MainActivity extends AppCompatActivity
 
         // TODO: 10/27/2017 Remember to clean up database on every start: If entry is for older than yesterday, remove it.
 
-        getSupportLoaderManager().initLoader(ID_WL15_LOADER, null, this);
+        Station exampleWhiteRockStation = PredictionServiceHelper.makeExampleStation();
+        GetTimezoneOffset gto = new GetTimezoneOffset();
+        gto.execute(exampleWhiteRockStation);
+
+        Bundle bundle = new Bundle();
+        String[] projection = {TidesEntry.COLUMN_DATE, TidesEntry.COLUMN_VALUE};
+        String selection = "(" + TidesEntry.COLUMN_STATION_ID + "=?) "
+                + "AND (" + TidesEntry.COLUMN_DATE + " BETWEEN ? AND ?)";
+        int stationId = 7577; // TODO: 10/31/2017 Grab this from the preferences instead
+        Long today = DateUtils.getStartOfToday();
+        Long tomorrow = DateUtils.getStartOfTomorrow();
+        String[] selectionArgs = {Integer.toString(stationId), today.toString(), tomorrow.toString()};
+        String sortBy = TidesEntry.COLUMN_DATE + " ASC";
+        bundle.putStringArray(PROJECTION_KEY, projection);
+        bundle.putString(SELECTION_KEY, selection);
+        bundle.putStringArray(SELECTION_ARGS_KEY, selectionArgs);
+        bundle.putString(SORT_BY_KEY, sortBy);
+        getSupportLoaderManager().initLoader(ID_WL15_LOADER, bundle, this);
 
         // TODO: 10/31/2017 Immediately start a data sync here.
 
@@ -166,12 +195,13 @@ public class MainActivity extends AppCompatActivity
         switch (id) {
             case ID_WL15_LOADER:
                 Uri wl15QueryUri = TidesEntry.WL15_CONTENT_URI;
+
                 return new CursorLoader(this,
                         wl15QueryUri,
-                        null,
-                        null,
-                        null,
-                        null);
+                        args.getStringArray(PROJECTION_KEY),
+                        args.getString(SELECTION_KEY),
+                        args.getStringArray(SELECTION_ARGS_KEY),
+                        args.getString(SORT_BY_KEY));
             default:
                 throw new RuntimeException("Loader not implemented: " + id);
         }
@@ -179,20 +209,27 @@ public class MainActivity extends AppCompatActivity
 
     @Override
     public void onLoadFinished(Loader loader, Object data) {
-        mGraphCursor = (Cursor) data;
-        if (mGraphCursor.getCount() != 0) {
-            LineGraphSeries<DataPoint> series = GraphViewUtils.getSeries(mGraphCursor);
-            mGraphView.removeAllSeries();
-            mGraphView.addSeries(series);
+        if (loader.getId() == ID_WL15_LOADER) {
+            mGraphCursor = (Cursor) data;
+            if (mGraphCursor.getCount() != 0) {
+                LineGraphSeries<DataPoint> series = GraphViewUtils.getSeries(mGraphCursor);
+                // TODO: 11/1/2017 This is where I need to verify the timezone and current time. At this point, I've guarenteed that the timezone async has completed.
+                // TODO: 10/31/2017 How should I correctly get the cursorLoader to repopulate the cursor when I click on a different day? Just call loader.reset or something?
+                mGraphView.removeAllSeries();
+                mGraphView.addSeries(series);
+
+            }
+            // TODO: 10/31/2017 else: throw up a toast or something?
         }
-        // TODO: 10/31/2017 else: throw up a toast or something?
         
     }
 
 
     @Override
     public void onLoaderReset(Loader loader) {
-        mGraphCursor = null;
+        if (loader.getId() == ID_WL15_LOADER) {
+            mGraphCursor = null;
+        }
     }
 
     /**
@@ -294,6 +331,26 @@ public class MainActivity extends AppCompatActivity
             ResultSet searchResult = predictionsService.search(sp);
 
             return info;
+        }
+    }
+
+    class GetTimezoneOffset extends AsyncTask<Station, Void, Long> {
+        @Override
+        protected void onPreExecute() {
+            mTimezoneOffset = null; // Reset timezone offset
+        }
+
+        @Override
+        protected Long doInBackground(Station... params) {
+            Station s = params[0];
+            Long currentTimestamp = DateUtils.getRightNow();
+            Long timezoneOffset = DateUtils.getTimezoneOffset(s.latitude, s.longitude, currentTimestamp);
+            return timezoneOffset;
+        }
+
+        @Override
+        protected void onPostExecute(Long offset) {
+            mTimezoneOffset = offset; // Set timezone offset to valid offset
         }
     }
 

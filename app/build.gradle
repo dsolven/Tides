@@ -9,6 +9,10 @@ allprojects {
     }
 }
 
+def keystorePropertiesFile = rootProject.file("secrets.properties")
+def keystoreProperties = new Properties()
+keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+
 android {
     compileSdkVersion 26
     buildToolsVersion "25.0.2"
@@ -28,6 +32,9 @@ android {
         repositories {
             maven { url 'https://oss.sonatype.org/content/repositories/ksoap2-android-releases/' }
         }
+    }
+    buildTypes.each {
+        it.buildConfigField 'String', 'GOOGLE_TIME_ZONE_API_KEY', keystoreProperties['GOOGLE_TIME_ZONE_API_KEY_PROP']
     }
 }
 

@@ -32,10 +32,10 @@ public class PredictionServiceHelper {
                 -122.7,
                 0.0,
                 0.0,
-                "2017-12-19 00:00:00",
-                "2017-12-21 00:00:00",
+                "2017-11-01 00:00:00",
+                "2017-11-03 00:00:00",
                 1,
-                100,
+                1000,
                 true,
                 "",
                 "asc");
@@ -57,6 +57,14 @@ public class PredictionServiceHelper {
                 true,
                 "",
                 "asc");
+    }
+
+    public static Station makeExampleStation() {
+        double latitude = 49.0211;
+        double longitude = -122.8058;
+        int station_id = 7577;
+        String station_name = "White Rock";
+        return new Station(station_id, station_name, latitude, longitude);
     }
 
 
