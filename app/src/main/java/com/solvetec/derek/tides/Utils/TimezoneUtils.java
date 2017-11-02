@@ -4,6 +4,9 @@ package com.solvetec.derek.tides.Utils;
 import android.net.Uri;
 import android.util.Log;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
@@ -41,6 +44,39 @@ public final class TimezoneUtils {
 //        return buildTimezoneUrl(latitude, longitude);
 //
 //    }
+
+    private static final String TZ_STATUS = "status";
+    private static final String TZ_ERRORMESSAGE = "errorMessage";
+    private static final String TZ_DSTOFFSET = "dstOffset";
+    private static final String TZ_RAWOFFSET = "rawOffset";
+    private static final String TZ_TIMEZONEID = "timeZoneId";
+    private static final String TZ_TIMEZONENAME = "timeZoneName";
+
+
+    public static Long parseTimezoneResponse(String response)
+            throws JSONException {
+
+        JSONObject timezoneJson = new JSONObject(response);
+
+        // Check the status
+        if (timezoneJson.has(TZ_STATUS)) {
+            String status = timezoneJson.getString(TZ_STATUS);
+            if (status.equals("OK")) {
+                Long offset = timezoneJson.getLong(TZ_DSTOFFSET) + timezoneJson.getLong(TZ_RAWOFFSET);
+                return offset;
+            } else {
+                // TODO: 11/1/2017 How to handle status != OK?
+            }
+        } else {
+            // TODO: 11/1/2017 How to handle no status returned? HTTP error?
+        }
+
+        return null;
+    }
+
+    public class Timezone {
+        // TODO: 11/1/2017 Keep the timeZoneName around too, to show in the
+    }
 
     /**
      * Builds the URL used to talk to the weather server using latitude and longitude of a

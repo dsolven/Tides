@@ -104,10 +104,10 @@ public class MainActivity extends AppCompatActivity
         String[] projection = {TidesEntry.COLUMN_DATE, TidesEntry.COLUMN_VALUE};
         String selection = "(" + TidesEntry.COLUMN_STATION_ID + "=?) "
                 + "AND (" + TidesEntry.COLUMN_DATE + " BETWEEN ? AND ?)";
-        int stationId = 7577; // TODO: 10/31/2017 Grab this from the preferences instead
+        String stationId = "07577"; // TODO: 10/31/2017 Grab this from the preferences instead
         Long today = DateUtils.getStartOfToday();
         Long tomorrow = DateUtils.getStartOfTomorrow();
-        String[] selectionArgs = {Integer.toString(stationId), today.toString(), tomorrow.toString()};
+        String[] selectionArgs = {stationId, today.toString(), tomorrow.toString()};
         String sortBy = TidesEntry.COLUMN_DATE + " ASC";
         bundle.putStringArray(PROJECTION_KEY, projection);
         bundle.putString(SELECTION_KEY, selection);
@@ -131,7 +131,7 @@ public class MainActivity extends AppCompatActivity
         buttonTestWl15Search.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                SearchParams sp = PredictionServiceHelper.makeExampleWl15SearchParams();
+                SearchParams sp = PredictionServiceHelper.getWl15SearchParams(getApplicationContext());
                 new PredictionsSearchAsync().execute(sp);
             }
         });
@@ -293,7 +293,7 @@ public class MainActivity extends AppCompatActivity
             predictionsService.setTimeOut(10); // The default of 180ms was often timing out.
             VectorMetadata vectorMetadata = predictionsService.getMetadata();
             ContentValues[] cvs = PredictionServiceHelper.parseVectorMetadata(vectorMetadata);
-            // TODO: 10/26/2017 Parse vectorMetadata, to populate the station information database.
+            getContentResolver().bulkInsert(TidesEntry.STATION_INFO_CONTENT_URI, cvs);
             return cvs[0].get(TidesEntry.COLUMN_STATION_NAME).toString();
         }
 

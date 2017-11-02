@@ -59,3 +59,6 @@ freeline_project_description.json
 
 # From Android Studio wizard
 .DS_Store
+
+# Project file that should not be version controlled
+ignored/

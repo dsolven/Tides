@@ -6,7 +6,7 @@ package com.Wsdl2Code.WebServices.PredictionsService;
 
 public class Station {
 
-    public int station_id;
+    public String station_id;
     public String station_name;
     public double latitude;
     public double longitude;
@@ -14,7 +14,7 @@ public class Station {
     public Station() {
     }
 
-    public Station(int station_id, String station_name, double latitude, double longitude) {
+    public Station(String station_id, String station_name, double latitude, double longitude) {
         this.station_id = station_id;
         this.station_name = station_name;
         this.latitude = latitude;

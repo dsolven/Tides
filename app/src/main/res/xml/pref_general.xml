@@ -6,7 +6,5 @@
     <EditTextPreference
         android:key="@string/pref_location_key"
         android:defaultValue="@string/pref_location_default"
-
         android:title="@string/pref_location_title" />
-    <!--TODO I think we want to store the default value as the location code.-->
 </PreferenceScreen>

@@ -3,12 +3,17 @@ package com.solvetec.derek.tides.Utils;
 
 import android.util.Log;
 
+import com.solvetec.derek.tides.data.TidesContract;
+
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.net.URL;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.Locale;
 import java.util.TimeZone;
 
 /**
@@ -18,7 +23,6 @@ import java.util.TimeZone;
 public class DateUtils {
 
     private static final String TAG = DateUtils.class.getSimpleName();
-    public static final int WL15_IN_DAY = 4 * 24; // 4 per hour * 24 hours per day
 
     public static long getRightNow() {
         Date now = new Date();
@@ -39,6 +43,7 @@ public class DateUtils {
         // use UTC time zone
         Calendar cal = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
 //        cal.setTimeZone(TimeZone.);
+        // TODO: 11/2/2017 Need to offset the startOfDay by the timezone. We care about getting 0H - 23.75h of the current location.
         cal.setTime(time);
         cal.set(Calendar.HOUR_OF_DAY, 0);
         cal.set(Calendar.MINUTE, 0);
@@ -56,46 +61,20 @@ public class DateUtils {
         try {
             String response = TimezoneUtils.getResponseFromHttpUrl(url);
             Log.d(TAG, "getTimezone: " + response);
-            return parseTimezoneResponse(response);
+            return TimezoneUtils.parseTimezoneResponse(response);
         } catch (Exception e) {
             e.printStackTrace();
             return null;
         }
     }
 
-
-    private static final String TZ_STATUS = "status";
-    private static final String TZ_ERRORMESSAGE = "errorMessage";
-    private static final String TZ_DSTOFFSET = "dstOffset";
-    private static final String TZ_RAWOFFSET = "rawOffset";
-    private static final String TZ_TIMEZONEID = "timeZoneId";
-    private static final String TZ_TIMEZONENAME = "timeZoneName";
-
-
-    private static Long parseTimezoneResponse(String response)
-            throws JSONException {
-
-        JSONObject timezoneJson = new JSONObject(response);
-
-        // Check the status
-        if (timezoneJson.has(TZ_STATUS)) {
-            String status = timezoneJson.getString(TZ_STATUS);
-            if (status.equals("OK")) {
-                Long offset = timezoneJson.getLong(TZ_DSTOFFSET) + timezoneJson.getLong(TZ_RAWOFFSET);
-                return offset;
-            } else {
-                // TODO: 11/1/2017 How to handle status != OK?
-            }
-        } else {
-            // TODO: 11/1/2017 How to handle no status returned? HTTP error?
-        }
-
-        return null;
+    public static String formatForSearchParams(Long millisIn) {
+        SimpleDateFormat sdf = new SimpleDateFormat(PredictionServiceHelper.SEARCH_DATE_FORMAT, Locale.CANADA);
+        return sdf.format(new Date(millisIn));
     }
 
-    public class Timezone {
-        // TODO: 11/1/2017 Keep the timeZoneName around too, to show in the
-    }
+
+
 
 
 }

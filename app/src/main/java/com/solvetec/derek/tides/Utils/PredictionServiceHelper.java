@@ -1,6 +1,10 @@
 package com.solvetec.derek.tides.Utils;
 
 import android.content.ContentValues;
+import android.content.Context;
+import android.content.SharedPreferences;
+import android.database.Cursor;
+import android.preference.PreferenceManager;
 
 import com.Wsdl2Code.WebServices.PredictionsService.Data;
 import com.Wsdl2Code.WebServices.PredictionsService.Metadata;
@@ -8,6 +12,7 @@ import com.Wsdl2Code.WebServices.PredictionsService.ResultSet;
 import com.Wsdl2Code.WebServices.PredictionsService.SearchParams;
 import com.Wsdl2Code.WebServices.PredictionsService.Station;
 import com.Wsdl2Code.WebServices.PredictionsService.VectorMetadata;
+import com.solvetec.derek.tides.R;
 import com.solvetec.derek.tides.data.TidesContract;
 
 import java.text.ParseException;
@@ -23,6 +28,9 @@ import java.util.regex.Pattern;
 
 public class PredictionServiceHelper {
 
+    public static final int WL15_IN_DAY = 4 * 24; // 4 per hour * 24 hours per day
+    public static final String SEARCH_DATE_FORMAT = "yyyy-MM-dd HH:mm:ss";
+
     public static SearchParams makeExampleWl15SearchParams() {
         return new SearchParams(
                 "wl15",
@@ -33,7 +41,7 @@ public class PredictionServiceHelper {
                 0.0,
                 0.0,
                 "2017-11-01 00:00:00",
-                "2017-11-03 00:00:00",
+                "2017-11-02 00:00:00",
                 1,
                 1000,
                 true,
@@ -51,9 +59,9 @@ public class PredictionServiceHelper {
                 0.0,
                 0.0,
                 "2017-12-19 00:00:00",
-                "2018-12-21 00:00:00",
+                "2018-12-19 00:00:00",
                 1,
-                100,
+                10000,
                 true,
                 "",
                 "asc");
@@ -62,11 +70,67 @@ public class PredictionServiceHelper {
     public static Station makeExampleStation() {
         double latitude = 49.0211;
         double longitude = -122.8058;
-        int station_id = 7577;
+        String station_id = "07577";
         String station_name = "White Rock";
         return new Station(station_id, station_name, latitude, longitude);
     }
 
+
+    public static SearchParams getWl15SearchParams(Context context) {
+
+        // Get the current station
+        Station s = getCurrentStation(context);
+
+        String dateMin = DateUtils.formatForSearchParams(DateUtils.getStartOfToday());
+        String dateMax = DateUtils.formatForSearchParams(DateUtils.getStartOfTomorrow());
+        // TODO: 11/2/2017 Right now, this only pulls one day worth of data. Change this and maxSize below.
+
+        String metadataSelection = "station_id=" + s.station_id;
+
+        return new SearchParams(
+                "wl15",
+                s.latitude - 0.1,
+                s.latitude + 0.1,
+                s.longitude - 0.1,
+                s.longitude + 0.1,
+                0.0,
+                0.0,
+                dateMin,
+                dateMax,
+                1,
+                WL15_IN_DAY,
+                true,
+                metadataSelection,
+                "asc");
+    }
+
+    public static Station getCurrentStation(Context context) {
+        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(context);
+        String stationId = sp.getString(context.getString(R.string.pref_location_key), null);
+        String[] selArgs = {stationId};
+        String sel = TidesContract.TidesEntry.COLUMN_STATION_ID + "=?";
+
+        Cursor resCursor = context.getContentResolver().query(
+                TidesContract.TidesEntry.STATION_INFO_CONTENT_URI,
+                null,
+                sel,
+                selArgs,
+                null);
+
+        if (resCursor != null && resCursor.getCount() != 0) {
+            String stationName = resCursor.getString(resCursor.getColumnIndex(TidesContract.TidesEntry.COLUMN_STATION_NAME));
+            Double stationLat = resCursor.getDouble(resCursor.getColumnIndex(TidesContract.TidesEntry.COLUMN_STATION_LAT));
+            Double stationLon = resCursor.getDouble(resCursor.getColumnIndex(TidesContract.TidesEntry.COLUMN_STATION_LON));
+
+            resCursor.close();
+            return new Station(stationId, stationName, stationLat, stationLon);
+        } else {
+            return makeExampleStation();
+            // TODO: 11/2/2017 This is a hack. For some unknown reason, this db query is returning an empty cursor right now.
+        }
+
+
+    }
 
     // TODO: 10/22/2017 This won't pull all of the necessary info (only the database info, not the "is this data valid" metadata). This might not be the best architecture for this task...
 
@@ -87,7 +151,7 @@ public class PredictionServiceHelper {
             ContentValues cv = new ContentValues();
             cv.put(TidesContract.TidesEntry.COLUMN_VALUE, d.value);
 
-            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.CANADA);
+            SimpleDateFormat sdf = new SimpleDateFormat(SEARCH_DATE_FORMAT, Locale.CANADA);
             try {
                 Date date = sdf.parse(d.boundaryDate.min); // min and max always contain the same info
                 cv.put(TidesContract.TidesEntry.COLUMN_DATE, date.getTime());
@@ -112,12 +176,7 @@ public class PredictionServiceHelper {
 
             switch (name) {
                 case "station_id":
-                    try {
-                        station.station_id = Integer.parseInt(value);
-                    } catch (NumberFormatException nfe) {
-                        nfe.printStackTrace();
-                    }
-                    break;
+                    station.station_id = value;
                 case "station_name":
                     station.station_name = value;
                     break;

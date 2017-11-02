@@ -27,6 +27,9 @@
             android:authorities="com.solvetec.derek.tides"
             android:name="com.solvetec.derek.tides.data.TidesContentProvider"
             android:exported="false" />
+        <service
+            android:name=".sync.TidesSyncIntentService"
+            android:exported="false" />
     </application>
 
 </manifest>

@@ -14,7 +14,7 @@ public class TidesDbHelper extends SQLiteOpenHelper {
 
     private static final String DATABASE_NAME = "tidesDb.db";
 
-    private static final int DATABASE_VERSION = 2;
+    private static final int DATABASE_VERSION = 3;
 
     public TidesDbHelper(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
@@ -25,19 +25,19 @@ public class TidesDbHelper extends SQLiteOpenHelper {
             TidesEntry._ID + " INTEGER PRIMARY_KEY, " +
             TidesEntry.COLUMN_DATE + " INTEGER NOT NULL, " +
             TidesEntry.COLUMN_VALUE + " REAL NOT NULL, " +
-            TidesEntry.COLUMN_STATION_ID + " INTEGER NOT NULL, " +
+            TidesEntry.COLUMN_STATION_ID + " TEXT NOT NULL, " +
             " UNIQUE (" + TidesEntry.COLUMN_DATE + ") ON CONFLICT REPLACE);";
 
     private static final String CREATE_TABLE_HILO = "CREATE TABLE " + TidesEntry.TABLE_HILO + " (" +
             TidesEntry._ID + " INTEGER PRIMARY_KEY, " +
             TidesEntry.COLUMN_DATE + " INTEGER NOT NULL, " +
             TidesEntry.COLUMN_VALUE + " REAL NOT NULL, " +
-            TidesEntry.COLUMN_STATION_ID + " INTEGER NOT NULL, " +
+            TidesEntry.COLUMN_STATION_ID + " TEXT NOT NULL, " +
             " UNIQUE (" + TidesEntry.COLUMN_DATE + ") ON CONFLICT REPLACE);";
 
     private static final String CREATE_TABLE_STATION_INFO = "CREATE TABLE " + TidesEntry.TABLE_STATION_INFO + " (" +
             TidesEntry._ID + " INTEGER PRIMARY_KEY, " +
-            TidesEntry.COLUMN_STATION_ID + " INTEGER NOT NULL, " +
+            TidesEntry.COLUMN_STATION_ID + " TEXT NOT NULL, " +
             TidesEntry.COLUMN_STATION_NAME + " TEXT NOT NULL, " +
             TidesEntry.COLUMN_STATION_LON + " REAL NOT NULL, " +
             TidesEntry.COLUMN_STATION_LAT + " REAL NOT NULL, " +
