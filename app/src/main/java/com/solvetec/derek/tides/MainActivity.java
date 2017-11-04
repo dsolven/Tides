@@ -100,6 +100,8 @@ public class MainActivity extends AppCompatActivity
         GetTimezoneOffset gto = new GetTimezoneOffset();
         gto.execute(exampleWhiteRockStation);
 
+        // The cursorLoader to get the latest info from the WL15 database, and display it in the GraphView.
+        // This currently loads the data from a single day, starting from  
         Bundle bundle = new Bundle();
         String[] projection = {TidesEntry.COLUMN_DATE, TidesEntry.COLUMN_VALUE};
         String selection = "(" + TidesEntry.COLUMN_STATION_ID + "=?) "
@@ -190,6 +192,11 @@ public class MainActivity extends AppCompatActivity
         }
     }
 
+
+    /**
+     * GraphView cursorLoader. Responsible for loading Cursor from database, and displaying it in
+     * the current day's graph.
+     */
     @Override
     public Loader<Cursor> onCreateLoader(int id, Bundle args) {
         switch (id) {
@@ -210,13 +217,16 @@ public class MainActivity extends AppCompatActivity
     @Override
     public void onLoadFinished(Loader loader, Object data) {
         if (loader.getId() == ID_WL15_LOADER) {
-            mGraphCursor = (Cursor) data;
-            if (mGraphCursor.getCount() != 0) {
-                LineGraphSeries<DataPoint> series = GraphViewUtils.getSeries(mGraphCursor);
+            Cursor dataCursor = (Cursor) data;
+            if (dataCursor.getCount() != 0) {
+                mGraphCursor = dataCursor;
+                LineGraphSeries<DataPoint> series = GraphViewUtils.getSeries(dataCursor);
                 // TODO: 11/1/2017 This is where I need to verify the timezone and current time. At this point, I've guarenteed that the timezone async has completed.
                 // TODO: 10/31/2017 How should I correctly get the cursorLoader to repopulate the cursor when I click on a different day? Just call loader.reset or something?
                 mGraphView.removeAllSeries();
                 mGraphView.addSeries(series);
+                GraphViewUtils.formatGraph(mGraphView, dataCursor);
+
 
             }
             // TODO: 10/31/2017 else: throw up a toast or something?
@@ -232,6 +242,7 @@ public class MainActivity extends AppCompatActivity
         }
     }
 
+
     /**
      * Async task to query Predictions webservice.
      * Responsible for pulling data from webservice, parsing it, and placing it into the wl15
@@ -240,7 +251,6 @@ public class MainActivity extends AppCompatActivity
     class PredictionsSearchAsync extends AsyncTask<SearchParams, Void, String[]> {
         @Override
         protected void onPreExecute() {
-
         }
 
         @Override
@@ -250,18 +260,19 @@ public class MainActivity extends AppCompatActivity
             predictionsService.setTimeOut(10); // The default of 180ms was often timing out.
 
             ResultSet searchResult = predictionsService.search(sp);
-            ContentValues[] cvs = null;
+            if (searchResult == null) {
+                // Something went wrong, probably no cell reception.
+                return new String[]{sp.dataName, "<Error, no data returned>."};
+            }
+            ContentValues[] cvs = PredictionServiceHelper.parseSearchResultSet(searchResult);
             String[] out = null;
             switch (sp.dataName) {
                 case "wl15":
-                    cvs = PredictionServiceHelper.parseSearchResultSet(searchResult);
-
                     getContentResolver().bulkInsert(TidesEntry.WL15_CONTENT_URI, cvs);
                     // TODO: 10/26/2017 What to return? Should I do the database insert here?
                     out = new String[]{sp.dataName, cvs[0].get(TidesEntry.COLUMN_VALUE).toString()};
                     return out;
                 case "hilo":
-                    cvs = PredictionServiceHelper.parseSearchResultSet(searchResult);
                     getContentResolver().bulkInsert(TidesEntry.HILO_CONTENT_URI, cvs);
                     // TODO: 10/26/2017 What to return? Should I do the database insert here?
                     out = new String[]{sp.dataName, cvs[0].get(TidesEntry.COLUMN_VALUE).toString()};
@@ -292,6 +303,10 @@ public class MainActivity extends AppCompatActivity
             PredictionsService predictionsService = new PredictionsService();
             predictionsService.setTimeOut(10); // The default of 180ms was often timing out.
             VectorMetadata vectorMetadata = predictionsService.getMetadata();
+            if (vectorMetadata == null) {
+                // Something went wrong, webservice didn't return data. Probably have no cell reception.
+                return "<Error. Stations not returned>.";
+            }
             ContentValues[] cvs = PredictionServiceHelper.parseVectorMetadata(vectorMetadata);
             getContentResolver().bulkInsert(TidesEntry.STATION_INFO_CONTENT_URI, cvs);
             return cvs[0].get(TidesEntry.COLUMN_STATION_NAME).toString();

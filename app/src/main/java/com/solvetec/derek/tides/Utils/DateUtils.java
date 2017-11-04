@@ -1,8 +1,10 @@
 package com.solvetec.derek.tides.Utils;
 
 
+import android.content.Context;
 import android.util.Log;
 
+import com.solvetec.derek.tides.R;
 import com.solvetec.derek.tides.data.TidesContract;
 
 import org.json.JSONException;
@@ -71,6 +73,11 @@ public class DateUtils {
     public static String formatForSearchParams(Long millisIn) {
         SimpleDateFormat sdf = new SimpleDateFormat(PredictionServiceHelper.SEARCH_DATE_FORMAT, Locale.CANADA);
         return sdf.format(new Date(millisIn));
+    }
+
+    public static String getDateString(Long millis, String format) {
+        SimpleDateFormat sdf = new SimpleDateFormat(format);
+        return sdf.format(new Date(millis));
     }
 
 
