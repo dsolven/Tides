@@ -3,7 +3,7 @@ package com.solvetec.derek.tides.sync;
 import android.content.Context;
 
 import com.Wsdl2Code.WebServices.PredictionsService.SearchParams;
-import com.solvetec.derek.tides.Utils.PredictionServiceHelper;
+import com.solvetec.derek.tides.utils.PredictionServiceHelper;
 
 /**
  * Created by dsolven on 11/1/2017.

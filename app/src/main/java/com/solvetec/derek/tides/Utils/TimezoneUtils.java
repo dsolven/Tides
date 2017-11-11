@@ -1,5 +1,5 @@
 
-package com.solvetec.derek.tides.Utils;
+package com.solvetec.derek.tides.utils;
 
 import android.net.Uri;
 import android.util.Log;

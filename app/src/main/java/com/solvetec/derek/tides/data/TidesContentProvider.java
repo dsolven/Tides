@@ -52,6 +52,50 @@ public class TidesContentProvider extends ContentProvider {
         return true;
     }
 
+    @Override
+    public int bulkInsert(@NonNull Uri uri, @NonNull ContentValues[] values) {
+        final SQLiteDatabase db = mTidesDbHelper.getWritableDatabase();
+
+        int match = sUriMatcher.match(uri);
+
+        long id;
+
+        switch (match) {
+            case WL15:
+                db.beginTransaction();
+                for (ContentValues value : values) {
+                    id = db.insert(TidesContract.TidesEntry.TABLE_WL15, null, value);
+                }
+                db.setTransactionSuccessful();
+                db.endTransaction();
+                // TODO: 11/6/2017 Not checking for success or failure, like I did in insert(). Problem?
+                break;
+            case HILO:
+                db.beginTransaction();
+                for (ContentValues value : values) {
+                    id = db.insert(TidesContract.TidesEntry.TABLE_HILO, null, value);
+                }
+                db.setTransactionSuccessful();
+                db.endTransaction();
+                break;
+            case STATION_INFO:
+                db.beginTransaction();
+                for (ContentValues value : values) {
+                    id = db.insert(TidesContract.TidesEntry.TABLE_STATION_INFO, null, value);
+                }
+                db.setTransactionSuccessful();
+                db.endTransaction();
+                break;
+            default:
+                throw new UnsupportedOperationException("Unknown uri: " + uri);
+        }
+
+        // Notify the resolver that the uri has changed
+        getContext().getContentResolver().notifyChange(uri, null);
+
+        return values.length;
+    }
+
     @Nullable
     @Override
     public Uri insert(@NonNull Uri uri, @Nullable ContentValues values) {

@@ -1,17 +1,9 @@
-package com.solvetec.derek.tides.Utils;
+package com.solvetec.derek.tides.utils;
 
 
-import android.content.Context;
 import android.util.Log;
 
-import com.solvetec.derek.tides.R;
-import com.solvetec.derek.tides.data.TidesContract;
-
-import org.json.JSONException;
-import org.json.JSONObject;
-
 import java.net.URL;
-import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
@@ -41,10 +33,20 @@ public class DateUtils {
         return getStartOfDay(cal.getTime());
     }
 
+    public static Long getStartOfDayOneWeekFromNow() {
+        Calendar cal = Calendar.getInstance(); // by default, returns right now
+        cal.roll(Calendar.DAY_OF_YEAR, 7); // increment by one day
+        return getStartOfDay(cal.getTime());
+    }
+
+    public static Long getFifteenMinutesInMillis() {
+        return 15L * 60 * 1000;
+    }
+
     public static Long getStartOfDay(Date time) {
         // use UTC time zone
-        Calendar cal = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
-//        cal.setTimeZone(TimeZone.);
+        Calendar cal = Calendar.getInstance(TimeZone.getDefault());
+        // TODO: 11/6/2017 Hardcoded timezone of phone right now. Need to change this to get the stored timezone, as queried from the google API.
         // TODO: 11/2/2017 Need to offset the startOfDay by the timezone. We care about getting 0H - 23.75h of the current location.
         cal.setTime(time);
         cal.set(Calendar.HOUR_OF_DAY, 0);

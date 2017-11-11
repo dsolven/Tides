@@ -2,31 +2,29 @@ package com.solvetec.derek.tides;
 
 import android.content.ContentValues;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.support.v4.app.LoaderManager;
-import android.support.v4.content.AsyncTaskLoader;
 import android.support.v4.content.CursorLoader;
 import android.support.v4.content.Loader;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
-import android.util.Log;
+import android.support.v7.widget.Toolbar;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import com.Wsdl2Code.WebServices.PredictionsService.BoundaryDate;
 import com.Wsdl2Code.WebServices.PredictionsService.BoundaryDepth;
 import com.Wsdl2Code.WebServices.PredictionsService.BoundarySpatial;
-import com.Wsdl2Code.WebServices.PredictionsService.Data;
-import com.Wsdl2Code.WebServices.PredictionsService.Metadata;
 import com.Wsdl2Code.WebServices.PredictionsService.PredictionsService;
 import com.Wsdl2Code.WebServices.PredictionsService.ResultSet;
 import com.Wsdl2Code.WebServices.PredictionsService.SearchParams;
@@ -36,15 +34,15 @@ import com.Wsdl2Code.WebServices.PredictionsService.VectorMetadata;
 import com.jjoe64.graphview.GraphView;
 import com.jjoe64.graphview.series.DataPoint;
 import com.jjoe64.graphview.series.LineGraphSeries;
-import com.solvetec.derek.tides.Utils.DateUtils;
-import com.solvetec.derek.tides.Utils.GraphViewUtils;
-import com.solvetec.derek.tides.Utils.PredictionServiceHelper;
+import com.solvetec.derek.tides.data.TidesContract;
+import com.solvetec.derek.tides.utils.DateUtils;
+import com.solvetec.derek.tides.utils.GraphViewUtils;
+import com.solvetec.derek.tides.utils.PredictionServiceHelper;
 import com.solvetec.derek.tides.data.TidesContract.TidesEntry;
 
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
-import java.util.Locale;
+import java.util.List;
 
 
 // TODO: 10/31/2017 Google API: Remember to restrict the API to this app only.
@@ -54,7 +52,7 @@ public class MainActivity extends AppCompatActivity
         implements DayListAdapter.ListItemClickListener,
         LoaderManager.LoaderCallbacks {
 
-    private static final String TAG = MainActivity.class.getSimpleName();
+    private static final String hiloCursor = MainActivity.class.getSimpleName();
     private DayListAdapter mDayListAdapter;
     private RecyclerView mDayListRecyclerView;
     private GraphView mGraphView;
@@ -64,6 +62,7 @@ public class MainActivity extends AppCompatActivity
     private Long mTimezoneOffset;
 
     private static final int ID_WL15_LOADER = 44;
+    private static final int ID_HILO_LOADER = 45;
     private static final String PROJECTION_KEY = "PROJECTION_KEY";
     private static final String SELECTION_KEY = "SELECTION_KEY";
     private static final String SELECTION_ARGS_KEY = "SELECTION_ARGS_KEY";
@@ -75,24 +74,40 @@ public class MainActivity extends AppCompatActivity
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        // Do any required "first run" initialization
+        PreferenceManager.setDefaultValues(this, R.xml.pref_general, false);
+        checkFirstRun();
+
+        // Setup the title bar
+        String title = (String) getSupportActionBar().getTitle();
+        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(this);
+        title = title + ": " + sp.getString(getString(R.string.pref_location_key), getString(R.string.pref_location_default));
+        getSupportActionBar().setTitle(title);
+
         // Setup the graphView
         mGraphView = (GraphView) findViewById(R.id.graph_main);
-        LineGraphSeries<DataPoint> series = new LineGraphSeries<>(new DataPoint[]{
-                new DataPoint(0, 1),
-                new DataPoint(1, 5),
-                new DataPoint(2, 3),
-                new DataPoint(3, 2),
-                new DataPoint(4, 6)
-        });
-        mGraphView.addSeries(series);
+//        LineGraphSeries<DataPoint> series = new LineGraphSeries<>(new DataPoint[]{
+//                new DataPoint(0, 1),
+//                new DataPoint(1, 5),
+//                new DataPoint(2, 3),
+//                new DataPoint(3, 2),
+//                new DataPoint(4, 6)
+//        });
+//        mGraphView.addSeries(series);
 
         // Setup the list of days
+        Bundle hiloBundle = new Bundle();
+        hiloBundle.putStringArray(PROJECTION_KEY, new String[] {TidesEntry.COLUMN_DATE, TidesEntry.COLUMN_VALUE});
+        hiloBundle.putString(SELECTION_KEY, "(" + TidesEntry.COLUMN_STATION_ID + "=?) ");
+        hiloBundle.putStringArray(SELECTION_ARGS_KEY, new String[] {"07577"}); // TODO: 10/31/2017 Grab this from the preferences instead
+        hiloBundle.putString(SORT_BY_KEY, TidesEntry.COLUMN_DATE + " ASC");
+        getSupportLoaderManager().initLoader(ID_HILO_LOADER, hiloBundle, this);
+
         mDayListRecyclerView = (RecyclerView) findViewById(R.id.rv_list_of_days);
         LinearLayoutManager layoutManager = new LinearLayoutManager(this);
         mDayListRecyclerView.setLayoutManager(layoutManager);
         mDayListRecyclerView.setHasFixedSize(true);
-        mDayListAdapter = new DayListAdapter(NUM_DAYS_TO_DISPLAY, this);
-        mDayListRecyclerView.setAdapter(mDayListAdapter);
+
 
         // TODO: 10/27/2017 Remember to clean up database on every start: If entry is for older than yesterday, remove it.
 
@@ -101,7 +116,7 @@ public class MainActivity extends AppCompatActivity
         gto.execute(exampleWhiteRockStation);
 
         // The cursorLoader to get the latest info from the WL15 database, and display it in the GraphView.
-        // This currently loads the data from a single day, starting from  
+        // This currently loads the data from a single day, starting from
         Bundle bundle = new Bundle();
         String[] projection = {TidesEntry.COLUMN_DATE, TidesEntry.COLUMN_VALUE};
         String selection = "(" + TidesEntry.COLUMN_STATION_ID + "=?) "
@@ -133,6 +148,7 @@ public class MainActivity extends AppCompatActivity
         buttonTestWl15Search.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                v.setEnabled(false);
                 SearchParams sp = PredictionServiceHelper.getWl15SearchParams(getApplicationContext());
                 new PredictionsSearchAsync().execute(sp);
             }
@@ -209,6 +225,14 @@ public class MainActivity extends AppCompatActivity
                         args.getString(SELECTION_KEY),
                         args.getStringArray(SELECTION_ARGS_KEY),
                         args.getString(SORT_BY_KEY));
+            case ID_HILO_LOADER:
+                Uri hiloQueryUri = TidesEntry.HILO_CONTENT_URI;
+                return new CursorLoader(this,
+                        hiloQueryUri,
+                        args.getStringArray(PROJECTION_KEY),
+                        args.getString(SELECTION_KEY),
+                        args.getStringArray(SELECTION_ARGS_KEY),
+                        args.getString(SORT_BY_KEY));
             default:
                 throw new RuntimeException("Loader not implemented: " + id);
         }
@@ -216,22 +240,32 @@ public class MainActivity extends AppCompatActivity
 
     @Override
     public void onLoadFinished(Loader loader, Object data) {
-        if (loader.getId() == ID_WL15_LOADER) {
-            Cursor dataCursor = (Cursor) data;
-            if (dataCursor.getCount() != 0) {
-                mGraphCursor = dataCursor;
-                LineGraphSeries<DataPoint> series = GraphViewUtils.getSeries(dataCursor);
-                // TODO: 11/1/2017 This is where I need to verify the timezone and current time. At this point, I've guarenteed that the timezone async has completed.
-                // TODO: 10/31/2017 How should I correctly get the cursorLoader to repopulate the cursor when I click on a different day? Just call loader.reset or something?
-                mGraphView.removeAllSeries();
-                mGraphView.addSeries(series);
-                GraphViewUtils.formatGraph(mGraphView, dataCursor);
+        Cursor dataCursor = (Cursor) data;
+        switch(loader.getId()) {
+            case ID_WL15_LOADER:
+                if (dataCursor.getCount() != 0) {
+                    mGraphCursor = dataCursor;
+                    LineGraphSeries<DataPoint> series = GraphViewUtils.getSeries(dataCursor);
+                    // TODO: 11/1/2017 This is where I need to verify the timezone and current time. At this point, I've guarenteed that the timezone async has completed.
+                    // TODO: 10/31/2017 How should I correctly get the cursorLoader to repopulate the cursor when I click on a different day? Just call loader.reset or something?
+                    mGraphView.removeAllSeries();
+                    mGraphView.addSeries(series);
+                    GraphViewUtils.formatGraph(mGraphView, dataCursor);
+                }
+                break;
+            case ID_HILO_LOADER:
+                if (dataCursor.getCount() != 0) {
+                    List<HiloDay> hiloDays = organizeHiloCursorIntoDays(dataCursor);
+                    mDayListAdapter = new DayListAdapter(NUM_DAYS_TO_DISPLAY, this, hiloDays, this);
+                    mDayListRecyclerView.setAdapter(mDayListAdapter);
+                }
+                break;
+            default:
+                break;
 
-
-            }
             // TODO: 10/31/2017 else: throw up a toast or something?
         }
-        
+
     }
 
 
@@ -290,6 +324,8 @@ public class MainActivity extends AppCompatActivity
 
         @Override
         protected void onPostExecute(String[] s) {
+            Button buttonTestWl15Search = (Button) findViewById(R.id.button_test_wl15_search_prediction);
+            buttonTestWl15Search.setEnabled(true);
             Toast.makeText(MainActivity.this, s[0] + " search completed. First entry is: " + s[1], Toast.LENGTH_SHORT).show();
         }
     }
@@ -367,6 +403,72 @@ public class MainActivity extends AppCompatActivity
         protected void onPostExecute(Long offset) {
             mTimezoneOffset = offset; // Set timezone offset to valid offset
         }
+    }
+
+    private void checkFirstRun() {
+        // TODO: 11/5/2017 Currently not using this method, but might be useful in the future.
+
+        final String PREF_VERSION_CODE_KEY = "version_code";
+        final int DOESNT_EXIST = -1;
+
+        // Get current version code
+        int currentVersionCode = BuildConfig.VERSION_CODE;
+
+        // Get saved version code
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+        int savedVersionCode = prefs.getInt(PREF_VERSION_CODE_KEY, DOESNT_EXIST);
+
+        // Check for first run or upgrade
+        if (currentVersionCode == savedVersionCode) {
+            // This is just a normal run
+            return;
+        } else if (savedVersionCode == DOESNT_EXIST) {
+            // TODO This is a new install (or the user cleared the shared preferences)
+
+        } else if (currentVersionCode > savedVersionCode) {
+            // TODO This is an upgrade
+
+        }
+
+        // Update the shared preferences with the current version code
+        prefs.edit().putInt(PREF_VERSION_CODE_KEY, currentVersionCode).apply();
+    }
+
+    // TODO: 11/5/2017 Move this to a new file?
+    // TODO: 11/5/2017 This is ripe for a unit test
+    public static List<HiloDay> organizeHiloCursorIntoDays(Cursor cursor) {
+
+        int valueColumnIndex = cursor.getColumnIndex(TidesContract.TidesEntry.COLUMN_VALUE);
+        int dateColumnIndex = cursor.getColumnIndex(TidesContract.TidesEntry.COLUMN_DATE);
+
+        List<HiloDay> hiloDays = new ArrayList<>();
+        if (cursor.moveToFirst()) {
+            Long currentDay = DateUtils.getStartOfDay(new Date(cursor.getLong(dateColumnIndex)));
+            Long lastDay = currentDay;
+            List<Double> todayList = new ArrayList<>();
+            todayList.add(cursor.getDouble(valueColumnIndex));
+            cursor.moveToNext();
+
+            do {
+                currentDay = DateUtils.getStartOfDay(new Date(cursor.getLong(dateColumnIndex)));
+                if(currentDay.equals(lastDay)) {
+                    // Same day, simply add to existing list
+                    todayList.add(cursor.getDouble(valueColumnIndex));
+                } else {
+                    // New day, start new list
+                    hiloDays.add(new HiloDay(currentDay, new ArrayList<>(todayList)));
+                    todayList.clear();
+                    todayList.add(cursor.getDouble(valueColumnIndex));
+                }
+
+                lastDay = currentDay;
+            } while (cursor.moveToNext());
+
+            // Handle last entry
+            hiloDays.add(new HiloDay(currentDay, new ArrayList<>(todayList)));
+        }
+
+        return hiloDays;
     }
 
 

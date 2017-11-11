@@ -1,4 +1,4 @@
-package com.solvetec.derek.tides.Utils;
+package com.solvetec.derek.tides.utils;
 
 import android.content.ContentValues;
 import android.content.Context;
@@ -82,8 +82,9 @@ public class PredictionServiceHelper {
         Station s = getCurrentStation(context);
 
         String dateMin = DateUtils.formatForSearchParams(DateUtils.getStartOfToday());
-        String dateMax = DateUtils.formatForSearchParams(DateUtils.getStartOfTomorrow());
-        // TODO: 11/2/2017 Right now, this only pulls one day worth of data. Change this and maxSize below.
+        String dateMax = DateUtils.formatForSearchParams(DateUtils.getStartOfDayOneWeekFromNow() + DateUtils.getFifteenMinutesInMillis());
+        int sizeMax = WL15_IN_DAY * 7 + 1;
+        // TODO: 11/2/2017 Right now, this is pulling 1 week worth of data. Change this and maxSize below.
 
         String metadataSelection = "station_id=" + s.station_id;
 
@@ -98,7 +99,7 @@ public class PredictionServiceHelper {
                 dateMin,
                 dateMax,
                 1,
-                WL15_IN_DAY,
+                sizeMax,
                 true,
                 metadataSelection,
                 "asc");

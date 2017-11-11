@@ -1,6 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="colorPrimary">#3F51B5</color>
-    <color name="colorPrimaryDark">#303F9F</color>
-    <color name="colorAccent">#FF4081</color>
+    <!--Default-->
+    <!--<color name="colorPrimary">#3F51B5</color>-->
+    <!--<color name="colorPrimaryDark">#303F9F</color>-->
+    <!--<color name="colorAccent">#FF4081</color>-->
+
+    <!--Material exported-->
+    <color name="colorPrimary">#7986cb</color>
+    <color name="colorAccent">#aab6fe</color>
+    <color name="colorPrimaryDark">#49599a</color>
+    <color name="colorPrimaryText">#000000</color>
+
+    <!--My custom-->
+    <color name="colorGraphBackground">#8049599a</color>
 </resources>

@@ -1,6 +1,7 @@
 package com.solvetec.derek.tides;
 
 import android.content.Context;
+import android.database.Cursor;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -8,6 +9,14 @@ import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.ViewGroup;
 import android.widget.TextView;
+
+import com.solvetec.derek.tides.data.TidesContract;
+import com.solvetec.derek.tides.utils.DateUtils;
+
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * Created by dsolven on 10/21/2017.
@@ -18,6 +27,8 @@ public class DayListAdapter extends RecyclerView.Adapter<DayListAdapter.DayViewH
     private static final String TAG = DayListAdapter.class.getSimpleName();
     private ListItemClickListener mOnClickListener;
     private int mNumberOfItems;
+    private List<HiloDay> mHiloDays;
+    private Context mContext;
 
     /**
      * The interface that receives onClick messages.
@@ -33,9 +44,11 @@ public class DayListAdapter extends RecyclerView.Adapter<DayListAdapter.DayViewH
      * @param numberOfItems Number of items to display in list
      * @param listener Listener for list item clicks
      */
-    public DayListAdapter(int numberOfItems, ListItemClickListener listener) {
+    public DayListAdapter(int numberOfItems, ListItemClickListener listener, List<HiloDay> hiloDays, Context context) {
         mNumberOfItems = numberOfItems;
         mOnClickListener = listener;
+        mHiloDays = hiloDays;
+        mContext = context;
     }
 
     /**
@@ -111,8 +124,16 @@ public class DayListAdapter extends RecyclerView.Adapter<DayListAdapter.DayViewH
          */
         void bind(int listIndex) {
             // TODO: 10/21/2017 This should eventually be populated by the database data.
-            listItemDateTextView.setText("Date: " + String.valueOf(listIndex));
-            listItemSummaryTextView.setText("Summary: " + String.valueOf(listIndex));
+            HiloDay hiloDay = mHiloDays.get(listIndex);
+
+            listItemDateTextView.setText(DateUtils.getDateString(hiloDay.timestamp, mContext.getString(R.string.format_date_weekday_date_and_time)));
+
+            // Parse data into single line
+            String summary = "";
+            for(Double val : hiloDay.data) {
+                summary += val.toString() + " ";
+            }
+            listItemSummaryTextView.setText(summary);
         }
 
         /**

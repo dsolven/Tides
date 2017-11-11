@@ -11,5 +11,7 @@
     <string name="format_date_days_only">yyyy-MM-dd</string>
     <string name="format_date_hours_and_seconds">HH:mm</string>
     <string name="format_date_date_and_time">yyyy-MM-dd HH:mm:ss</string>
+    <string name="format_date_weekday_date_and_time">EEE, MMM d yyyy HH:mm:ss Z</string>
+
 
 </resources>

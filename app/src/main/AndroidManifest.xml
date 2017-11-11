@@ -22,7 +22,9 @@
 
         <activity
             android:name=".SettingsActivity"
-            android:parentActivityName=".MainActivity" />
+            android:label="Settings"
+            android:parentActivityName="com.solvetec.derek.tides.MainActivity" />
+
         <provider
             android:authorities="com.solvetec.derek.tides"
             android:name="com.solvetec.derek.tides.data.TidesContentProvider"
