@@ -6,6 +6,7 @@ import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.v4.app.LoaderManager;
@@ -57,12 +58,14 @@ public class MainActivity extends AppCompatActivity
     private RecyclerView mDayListRecyclerView;
     private GraphView mGraphView;
     private Cursor mGraphCursor;
+    public List<Station> mStationsList;
     private static final int NUM_DAYS_TO_DISPLAY = 14;
 
     private Long mTimezoneOffset;
 
     private static final int ID_WL15_LOADER = 44;
     private static final int ID_HILO_LOADER = 45;
+    private static final int ID_STATIONS_LOADER = 46;
     private static final String PROJECTION_KEY = "PROJECTION_KEY";
     private static final String SELECTION_KEY = "SELECTION_KEY";
     private static final String SELECTION_ARGS_KEY = "SELECTION_ARGS_KEY";
@@ -94,6 +97,19 @@ public class MainActivity extends AppCompatActivity
 //                new DataPoint(4, 6)
 //        });
 //        mGraphView.addSeries(series);
+
+        // Load all stations from the database into memory, so other parts of the code can use it easily
+        // TODO: 11/11/2017 How to actually get this info to other activities? Easier maybe to just query db again.
+        Bundle stationsBundle = new Bundle();
+        stationsBundle.putStringArray(PROJECTION_KEY, new String[] {
+                TidesEntry.COLUMN_STATION_ID,
+                TidesEntry.COLUMN_STATION_NAME,
+                TidesEntry.COLUMN_STATION_LON,
+                TidesEntry.COLUMN_STATION_LAT });
+        stationsBundle.putString(SELECTION_KEY, null);
+        stationsBundle.putStringArray(SELECTION_ARGS_KEY, null);
+        stationsBundle.putString(SORT_BY_KEY, TidesEntry.COLUMN_STATION_ID + " ASC");
+        getSupportLoaderManager().initLoader(ID_STATIONS_LOADER, stationsBundle, this);
 
         // Setup the list of days
         Bundle hiloBundle = new Bundle();
@@ -233,6 +249,14 @@ public class MainActivity extends AppCompatActivity
                         args.getString(SELECTION_KEY),
                         args.getStringArray(SELECTION_ARGS_KEY),
                         args.getString(SORT_BY_KEY));
+            case ID_STATIONS_LOADER:
+                Uri stationsQueryUri = TidesEntry.STATION_INFO_CONTENT_URI;
+                return new CursorLoader(this,
+                        stationsQueryUri,
+                        args.getStringArray(PROJECTION_KEY),
+                        args.getString(SELECTION_KEY),
+                        args.getStringArray(SELECTION_ARGS_KEY),
+                        args.getString(SORT_BY_KEY));
             default:
                 throw new RuntimeException("Loader not implemented: " + id);
         }
@@ -258,6 +282,11 @@ public class MainActivity extends AppCompatActivity
                     List<HiloDay> hiloDays = organizeHiloCursorIntoDays(dataCursor);
                     mDayListAdapter = new DayListAdapter(NUM_DAYS_TO_DISPLAY, this, hiloDays, this);
                     mDayListRecyclerView.setAdapter(mDayListAdapter);
+                }
+                break;
+            case ID_STATIONS_LOADER:
+                if (dataCursor.getCount() != 0) {
+                    mStationsList = parseStationCursor(dataCursor);
                 }
                 break;
             default:
@@ -434,6 +463,28 @@ public class MainActivity extends AppCompatActivity
         prefs.edit().putInt(PREF_VERSION_CODE_KEY, currentVersionCode).apply();
     }
 
+    // TODO: 11/11/2017 Move this to a new file?
+    public static List<Station> parseStationCursor(Cursor cursor) {
+        List<Station> stationList = new ArrayList<>();
+
+        final int STATION_ID_INDEX = cursor.getColumnIndex(TidesEntry.COLUMN_STATION_ID);
+        final int STATION_NAME_INDEX = cursor.getColumnIndex(TidesEntry.COLUMN_STATION_NAME);
+        final int STATION_LAT_INDEX = cursor.getColumnIndex(TidesEntry.COLUMN_STATION_LAT);
+        final int STATION_LON_INDEX = cursor.getColumnIndex(TidesEntry.COLUMN_STATION_LON);
+
+        if(cursor.moveToFirst()) {
+            do {
+                Station station = new Station(
+                        cursor.getString(STATION_ID_INDEX),
+                        cursor.getString(STATION_NAME_INDEX),
+                        cursor.getDouble(STATION_LAT_INDEX),
+                        cursor.getDouble(STATION_LON_INDEX));
+                        stationList.add(station);
+            } while(cursor.moveToNext());
+        }
+        return stationList;
+    }
+
     // TODO: 11/5/2017 Move this to a new file?
     // TODO: 11/5/2017 This is ripe for a unit test
     public static List<HiloDay> organizeHiloCursorIntoDays(Cursor cursor) {
@@ -469,6 +520,17 @@ public class MainActivity extends AppCompatActivity
         }
 
         return hiloDays;
+    }
+
+    public static boolean isEmulator() {
+        return Build.FINGERPRINT.startsWith("generic")
+                || Build.FINGERPRINT.startsWith("unknown")
+                || Build.MODEL.contains("google_sdk")
+                || Build.MODEL.contains("Emulator")
+                || Build.MODEL.contains("Android SDK built for x86")
+                || Build.MANUFACTURER.contains("Genymotion")
+                || (Build.BRAND.startsWith("generic") && Build.DEVICE.startsWith("generic"))
+                || "google_sdk".equals(Build.PRODUCT);
     }
 
 

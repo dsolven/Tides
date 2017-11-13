@@ -1,6 +1,7 @@
 package com.solvetec.derek.tides;
 
 import android.app.Activity;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.support.v7.preference.CheckBoxPreference;
@@ -38,6 +39,17 @@ public class SettingsFragment extends PreferenceFragmentCompat
     public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
         addPreferencesFromResource(R.xml.pref_general);
 
+        // Manually set the onClickListener for the maps activity
+        Preference mapPickerPreference = findPreference(getString(R.string.pref_map_key));
+        mapPickerPreference.setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
+            @Override
+            public boolean onPreferenceClick(Preference preference) {
+                startActivity(new Intent(getContext(), MapPickerActivity.class));
+                return true;
+            }
+        });
+
+        // Set summary for each preference listed in the xml
         SharedPreferences sharedPreferences = getPreferenceScreen().getSharedPreferences();
         PreferenceScreen prefScreen = getPreferenceScreen();
         int count = prefScreen.getPreferenceCount();

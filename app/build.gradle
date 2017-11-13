@@ -23,6 +23,8 @@ android {
         versionCode 1
         versionName "1.0"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+        manifestPlaceholders = [ GOOGLE_GEO_API_KEY:keystoreProperties['GOOGLE_GEO_API_KEY_PROP']]
+
     }
     buildTypes {
         release {
@@ -48,5 +50,6 @@ dependencies {
     implementation 'com.android.support:recyclerview-v7:26.1.0'
     implementation 'com.google.code.ksoap2-android:ksoap2-android:3.6.1'
     implementation 'com.jjoe64:graphview:4.2.1'
+    implementation 'com.google.android.gms:play-services-maps:11.6.0'
     testImplementation 'junit:junit:4.12'
 }

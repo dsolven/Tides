@@ -25,6 +25,11 @@
             android:label="Settings"
             android:parentActivityName="com.solvetec.derek.tides.MainActivity" />
 
+        <activity
+            android:name=".MapPickerActivity"
+            android:label="Map"
+            android:parentActivityName=".SettingsActivity"/>
+
         <provider
             android:authorities="com.solvetec.derek.tides"
             android:name="com.solvetec.derek.tides.data.TidesContentProvider"
@@ -32,6 +37,10 @@
         <service
             android:name=".sync.TidesSyncIntentService"
             android:exported="false" />
+
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="${GOOGLE_GEO_API_KEY}" />
     </application>
 
 </manifest>

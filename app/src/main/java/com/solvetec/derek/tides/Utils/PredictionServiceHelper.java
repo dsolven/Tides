@@ -107,7 +107,7 @@ public class PredictionServiceHelper {
 
     public static Station getCurrentStation(Context context) {
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(context);
-        String stationId = sp.getString(context.getString(R.string.pref_location_key), null);
+        String stationId = sp.getString(context.getString(R.string.pref_location_key), context.getString(R.string.pref_location_default));
         String[] selArgs = {stationId};
         String sel = TidesContract.TidesEntry.COLUMN_STATION_ID + "=?";
 
@@ -118,7 +118,7 @@ public class PredictionServiceHelper {
                 selArgs,
                 null);
 
-        if (resCursor != null && resCursor.getCount() != 0) {
+        if (resCursor != null && resCursor.getCount() != 0 && resCursor.moveToFirst()) {
             String stationName = resCursor.getString(resCursor.getColumnIndex(TidesContract.TidesEntry.COLUMN_STATION_NAME));
             Double stationLat = resCursor.getDouble(resCursor.getColumnIndex(TidesContract.TidesEntry.COLUMN_STATION_LAT));
             Double stationLon = resCursor.getDouble(resCursor.getColumnIndex(TidesContract.TidesEntry.COLUMN_STATION_LON));
@@ -240,37 +240,27 @@ public class PredictionServiceHelper {
         for (int i = 0; i < ids.length; i++) {
             ContentValues cv = new ContentValues();
 
-            int id = -1;
-            try {
-                id = Integer.parseInt(ids[i]);
-            } catch (NumberFormatException nfe) {
-                nfe.printStackTrace();
-            }
+            // ID
+            String id = ids[i];
 
-            // Split into id,lat,lon
+            // POSITION: Split into id,lat,lon
             String[] positions = Pattern.compile(",").split(posStrings[i]);
             Double lat = null;
             Double lon = null;
-            int posId = -1;
+            String posId = positions[0];
             try {
-                posId = Integer.parseInt(positions[0]);
                 lat = Double.parseDouble(positions[1]);
                 lon = Double.parseDouble(positions[2]);
             } catch (NumberFormatException nfe) {
                 nfe.printStackTrace();
             }
 
-            // Split into id,name
+            // NAME: Split into id,name
             String[] names = Pattern.compile(";;").split(nameStrings[i]);
-            int nameId = -1;
-            try {
-                nameId = Integer.parseInt(names[0]);
-            } catch (NumberFormatException nfe) {
-                nfe.printStackTrace();
-            }
+            String nameId = names[0];
             String name = names[1];
 
-            if (id != posId || id != nameId || posId == -1) {
+            if (!id.equals(posId) || !id.equals(nameId)) {
                 throw new Error("Metadata must be in the same order.");
             }
 

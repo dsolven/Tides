@@ -20,4 +20,12 @@ public class Station {
         this.latitude = latitude;
         this.longitude = longitude;
     }
+
+    // Copy constructor
+    public Station(Station station) {
+        this.station_id = station.station_id;
+        this.station_name = station.station_name;
+        this.latitude = station.latitude;
+        this.longitude = station.longitude;
+    }
 }
