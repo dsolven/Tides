@@ -7,8 +7,6 @@
         android:key="@string/pref_location_key"
         android:defaultValue="@string/pref_location_default"
         android:title="@string/pref_location_title" />
-    <Preference
-        android:key="@string/pref_map_key"
-        android:title="@string/pref_map_title"/>
+
 
 </PreferenceScreen>

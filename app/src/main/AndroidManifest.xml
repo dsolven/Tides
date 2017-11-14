@@ -27,8 +27,8 @@
 
         <activity
             android:name=".MapPickerActivity"
-            android:label="Map"
-            android:parentActivityName=".SettingsActivity"/>
+            android:label="@string/title_map"
+            android:parentActivityName=".MainActivity"/>
 
         <provider
             android:authorities="com.solvetec.derek.tides"
