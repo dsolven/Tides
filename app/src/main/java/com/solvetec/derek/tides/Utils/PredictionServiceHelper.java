@@ -105,6 +105,35 @@ public class PredictionServiceHelper {
                 "asc");
     }
 
+    public static SearchParams getHILOSearchParams(Context context) {
+
+        // Get the current station
+        Station s = getCurrentStation(context);
+
+        String dateMin = DateUtils.formatForSearchParams(DateUtils.getStartOfToday());
+        String dateMax = DateUtils.formatForSearchParams(DateUtils.getStartOfDaySixMonthsFromNow());
+        int sizeMax = 1000; // sizeMax is undetermined. Number of hi/lo per day is variable. 1000 should be larger than needed.
+        // TODO: 11/2/2017 Right now, this is pulling 6 months worth of data. Change this and maxSize below.
+
+        String metadataSelection = "station_id=" + s.station_id;
+
+        return new SearchParams(
+                "hilo",
+                s.latitude - 0.1,
+                s.latitude + 0.1,
+                s.longitude - 0.1,
+                s.longitude + 0.1,
+                0.0,
+                0.0,
+                dateMin,
+                dateMax,
+                1,
+                sizeMax,
+                true,
+                metadataSelection,
+                "asc");
+    }
+
     public static Station getCurrentStation(Context context) {
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(context);
         String stationId = sp.getString(context.getString(R.string.pref_location_key), context.getString(R.string.pref_location_default));

@@ -8,6 +8,7 @@ import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
+import android.preference.PreferenceFragment;
 import android.preference.PreferenceManager;
 import android.support.v4.app.LoaderManager;
 import android.support.v4.content.CursorLoader;
@@ -92,6 +93,7 @@ public class MainActivity extends AppCompatActivity
 
         // Do any required "first run" initialization
         PreferenceManager.setDefaultValues(this, R.xml.pref_general, false);
+        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
         checkFirstRun();
 
         // Setup the graphView
@@ -120,9 +122,11 @@ public class MainActivity extends AppCompatActivity
 
         // Setup the list of days
         Bundle hiloBundle = new Bundle();
+        String stationId = sharedPreferences.getString(getString(R.string.pref_location_key), getString(R.string.pref_location_default));
+
         hiloBundle.putStringArray(PROJECTION_KEY, new String[] {TidesEntry.COLUMN_DATE, TidesEntry.COLUMN_VALUE});
         hiloBundle.putString(SELECTION_KEY, "(" + TidesEntry.COLUMN_STATION_ID + "=?) ");
-        hiloBundle.putStringArray(SELECTION_ARGS_KEY, new String[] {"07577"}); // TODO: 10/31/2017 Grab this from the preferences instead
+        hiloBundle.putStringArray(SELECTION_ARGS_KEY, new String[] {stationId});
         hiloBundle.putString(SORT_BY_KEY, TidesEntry.COLUMN_DATE + " ASC");
         getSupportLoaderManager().initLoader(ID_HILO_LOADER, hiloBundle, this);
 
@@ -144,7 +148,6 @@ public class MainActivity extends AppCompatActivity
         String[] projection = {TidesEntry.COLUMN_DATE, TidesEntry.COLUMN_VALUE};
         String selection = "(" + TidesEntry.COLUMN_STATION_ID + "=?) "
                 + "AND (" + TidesEntry.COLUMN_DATE + " BETWEEN ? AND ?)";
-        String stationId = "07577"; // TODO: 10/31/2017 Grab this from the preferences instead
         Long today = DateUtils.getStartOfToday();
         Long tomorrow = DateUtils.getStartOfTomorrow();
         String[] selectionArgs = {stationId, today.toString(), tomorrow.toString()};
@@ -181,7 +184,7 @@ public class MainActivity extends AppCompatActivity
         buttonTestHiloSearch.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                SearchParams sp = PredictionServiceHelper.makeExampleHiloSearchParams();
+                SearchParams sp = PredictionServiceHelper.getHILOSearchParams(getApplicationContext());
                 new PredictionsSearchAsync().execute(sp);
             }
         });
@@ -275,7 +278,7 @@ public class MainActivity extends AppCompatActivity
     @Override
     public void onLoadFinished(Loader loader, Object data) {
         Cursor dataCursor = (Cursor) data;
-        Log.d(TAG, "onLoadFinished: " + loader.getId());
+        Log.d(TAG, "onLoadFinished: " + loader.getId() + ". Cursor size: " + dataCursor.getCount());
 
         switch(loader.getId()) {
             case ID_WL15_LOADER:
@@ -288,6 +291,7 @@ public class MainActivity extends AppCompatActivity
                     mGraphView.addSeries(series);
                     GraphViewUtils.formatGraph(mGraphView, dataCursor);
                 }
+                Log.d(TAG, "onLoadFinished: WL15 onLoadFinished complete.");
                 break;
             case ID_HILO_LOADER:
                 if (dataCursor.getCount() != 0) {
@@ -295,12 +299,14 @@ public class MainActivity extends AppCompatActivity
                     mDayListAdapter = new DayListAdapter(NUM_DAYS_TO_DISPLAY, this, hiloDays, this);
                     mDayListRecyclerView.setAdapter(mDayListAdapter);
                 }
+                Log.d(TAG, "onLoadFinished: HILO onLoadFinished complete.");
                 break;
             case ID_STATIONS_LOADER:
                 if (dataCursor.getCount() != 0) {
                     mStationsMap = parseStationCursor(dataCursor);
                     setupTitleBar(mStationsMap);
                 }
+                Log.d(TAG, "onLoadFinished: STATIONS onLoadFinished complete.");
                 break;
             default:
                 break;
