@@ -29,13 +29,19 @@ public class DateUtils {
 
     public static Long getStartOfTomorrow() {
         Calendar cal = Calendar.getInstance(); // by default, returns right now
-        cal.roll(Calendar.DAY_OF_YEAR, true); // increment by one day
+        cal.add(Calendar.DAY_OF_YEAR, 1); // increment by one day
         return getStartOfDay(cal.getTime());
     }
 
     public static Long getStartOfDayOneWeekFromNow() {
         Calendar cal = Calendar.getInstance(); // by default, returns right now
-        cal.roll(Calendar.DAY_OF_YEAR, 7); // increment by one day
+        cal.add(Calendar.DAY_OF_YEAR, 7); // increment by one day
+        return getStartOfDay(cal.getTime());
+    }
+
+    public static Long getStartOfDaySixMonthsFromNow() {
+        Calendar cal = Calendar.getInstance(); // by default, returns right now
+        cal.add(Calendar.MONTH, 6); // increment by 6 months
         return getStartOfDay(cal.getTime());
     }
 
