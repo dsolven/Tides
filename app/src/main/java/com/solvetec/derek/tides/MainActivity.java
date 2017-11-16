@@ -37,6 +37,7 @@ import com.Wsdl2Code.WebServices.PredictionsService.VectorMetadata;
 import com.jjoe64.graphview.GraphView;
 import com.jjoe64.graphview.series.DataPoint;
 import com.jjoe64.graphview.series.LineGraphSeries;
+import com.jjoe64.graphview.series.Series;
 import com.solvetec.derek.tides.data.TidesContract;
 import com.solvetec.derek.tides.utils.DateUtils;
 import com.solvetec.derek.tides.utils.GraphViewUtils;
@@ -79,36 +80,37 @@ public class MainActivity extends AppCompatActivity
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        Log.d(TAG, "onCreate: Started.");
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        // TODO: 11/13/2017 I need to separate the "build" parts of the UI from the "populate" parts of the UI. Leave the build in onCreate, move the populate to onResume.
+        // Do any required "first run" initialization
+        checkFirstRun();
+        PreferenceManager.setDefaultValues(this, R.xml.pref_general, false);
 
+
+        // TODO: 11/13/2017 I need to separate the "build" parts of the UI from the "populate" parts of the UI. Leave the build in onCreate, move the populate to onResume.
+        // Setup the GraphView
+        mGraphView = (GraphView) findViewById(R.id.graph_main);
+
+        // Setup the RecyclerView
+        mDayListRecyclerView = (RecyclerView) findViewById(R.id.rv_list_of_days);
+        LinearLayoutManager layoutManager = new LinearLayoutManager(this);
+        mDayListRecyclerView.setLayoutManager(layoutManager);
+        mDayListRecyclerView.setHasFixedSize(true);
     }
 
 
     @Override
     protected void onResume() {
+        Log.d(TAG, "onResume: Started.");
         super.onResume();
 
-        // Do any required "first run" initialization
-        PreferenceManager.setDefaultValues(this, R.xml.pref_general, false);
+        // Load sharedPreferences again, as they may have changed.
         SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
-        checkFirstRun();
-
-        // Setup the graphView
-        mGraphView = (GraphView) findViewById(R.id.graph_main);
-//        LineGraphSeries<DataPoint> series = new LineGraphSeries<>(new DataPoint[]{
-//                new DataPoint(0, 1),
-//                new DataPoint(1, 5),
-//                new DataPoint(2, 3),
-//                new DataPoint(3, 2),
-//                new DataPoint(4, 6)
-//        });
-//        mGraphView.addSeries(series);
+        String stationId = sharedPreferences.getString(getString(R.string.pref_location_key), getString(R.string.pref_location_default));
 
         // Load all stations from the database into memory, so other parts of the code can use it easily
-        // TODO: 11/11/2017 How to actually get this info to other activities? Easier maybe to just query db again.
         Bundle stationsBundle = new Bundle();
         stationsBundle.putStringArray(PROJECTION_KEY, new String[] {
                 TidesEntry.COLUMN_STATION_ID,
@@ -122,26 +124,20 @@ public class MainActivity extends AppCompatActivity
 
         // Setup the list of days
         Bundle hiloBundle = new Bundle();
-        String stationId = sharedPreferences.getString(getString(R.string.pref_location_key), getString(R.string.pref_location_default));
-
         hiloBundle.putStringArray(PROJECTION_KEY, new String[] {TidesEntry.COLUMN_DATE, TidesEntry.COLUMN_VALUE});
         hiloBundle.putString(SELECTION_KEY, "(" + TidesEntry.COLUMN_STATION_ID + "=?) ");
         hiloBundle.putStringArray(SELECTION_ARGS_KEY, new String[] {stationId});
         hiloBundle.putString(SORT_BY_KEY, TidesEntry.COLUMN_DATE + " ASC");
         getSupportLoaderManager().initLoader(ID_HILO_LOADER, hiloBundle, this);
 
-        mDayListRecyclerView = (RecyclerView) findViewById(R.id.rv_list_of_days);
-        LinearLayoutManager layoutManager = new LinearLayoutManager(this);
-        mDayListRecyclerView.setLayoutManager(layoutManager);
-        mDayListRecyclerView.setHasFixedSize(true);
-
-
         // TODO: 10/27/2017 Remember to clean up database on every start: If entry is for older than yesterday, remove it.
 
+        // TODO: 11/15/2017 Connect up the timezone API, to actually get the selected station timezone, and use it in date calculations.
         Station exampleWhiteRockStation = PredictionServiceHelper.makeExampleStation();
         GetTimezoneOffset gto = new GetTimezoneOffset();
         gto.execute(exampleWhiteRockStation);
 
+        // TODO: 11/15/2017 Move this to a sync function, and allow the "day to display" as a param. This is needed to allow for the list of days click listener to change the day displayed.
         // The cursorLoader to get the latest info from the WL15 database, and display it in the GraphView.
         // This currently loads the data from a single day, starting from
         Bundle bundle = new Bundle();
@@ -284,12 +280,26 @@ public class MainActivity extends AppCompatActivity
             case ID_WL15_LOADER:
                 if (dataCursor.getCount() != 0) {
                     mGraphCursor = dataCursor;
-                    LineGraphSeries<DataPoint> series = GraphViewUtils.getSeries(dataCursor);
+                    DataPoint[] newDataPoints = GraphViewUtils.getSeries(dataCursor);
                     // TODO: 11/1/2017 This is where I need to verify the timezone and current time. At this point, I've guarenteed that the timezone async has completed.
                     // TODO: 10/31/2017 How should I correctly get the cursorLoader to repopulate the cursor when I click on a different day? Just call loader.reset or something?
-                    mGraphView.removeAllSeries();
-                    mGraphView.addSeries(series);
-                    GraphViewUtils.formatGraph(mGraphView, dataCursor);
+
+                    List<Series> seriesList = mGraphView.getSeries();
+
+                    if(seriesList.size() == 0) {
+                        // First time
+                        LineGraphSeries<DataPoint> newSeries = new LineGraphSeries<>(newDataPoints);
+                        mGraphView.addSeries(newSeries);
+                        GraphViewUtils.formatSeriesColor(mGraphView);
+                        GraphViewUtils.formatGraphBounds(mGraphView);
+                    } else {
+                        // Series already created, just update
+                        LineGraphSeries series = (LineGraphSeries) seriesList.get(0);
+                        series.resetData(newDataPoints);
+                        GraphViewUtils.formatGraphBounds(mGraphView);
+
+                    }
+
                 }
                 Log.d(TAG, "onLoadFinished: WL15 onLoadFinished complete.");
                 break;

@@ -12,5 +12,6 @@
     <color name="colorPrimaryText">#000000</color>
 
     <!--My custom-->
-    <color name="colorGraphBackground">#8049599a</color>
+    <color name="colorGraphBackground">#4049599a</color>
 </resources>
+

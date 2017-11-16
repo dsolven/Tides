@@ -23,7 +23,7 @@ import java.util.List;
 
 public class GraphViewUtils {
 
-    public static LineGraphSeries<DataPoint> getSeries(Cursor cursor) {
+    public static DataPoint[] getSeries(Cursor cursor) {
 
         ArrayList<DataPoint> seriesList = new ArrayList<>();
         if (cursor.moveToFirst()) {
@@ -34,12 +34,12 @@ public class GraphViewUtils {
             } while (cursor.moveToNext());
         }
 
-        DataPoint[] dataPointArray = seriesList.toArray(new DataPoint[0]);
-        LineGraphSeries<DataPoint> series = new LineGraphSeries<>(dataPointArray);
-        return series;
+        DataPoint[] dataPointArray = new DataPoint[seriesList.size()];
+        dataPointArray = seriesList.toArray(dataPointArray);
+        return dataPointArray;
     }
 
-    public static void formatGraph(GraphView graphView, Cursor dataCursor) {
+    public static void formatGraphBounds(GraphView graphView) {
         // TODO: 11/6/2017 Dev: Here are all of the objects inside graphView
         Viewport viewport = graphView.getViewport();
         List<Series> seriesList = graphView.getSeries();
@@ -72,12 +72,16 @@ public class GraphViewUtils {
             @Override
             public void setViewport(Viewport viewport) {}
         });
+    }
 
-        // Colours
+    public static void formatSeriesColor(GraphView graphView) {
+        Context context = graphView.getContext();
+
+        List<Series> seriesList = graphView.getSeries();
+        LineGraphSeries series = (LineGraphSeries) seriesList.get(0);
         series.setBackgroundColor(context.getResources().getColor(R.color.colorGraphBackground));
         series.setDrawBackground(true);
     }
-
 
     // Copied from GridLabelRenderer.java.
     private static double humanRound(double in, boolean roundAlwaysUp) {
