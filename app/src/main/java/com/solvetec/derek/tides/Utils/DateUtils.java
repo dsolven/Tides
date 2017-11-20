@@ -49,6 +49,14 @@ public class DateUtils {
         return 15L * 60 * 1000;
     }
 
+    public static Long getStartOfDayAfterThis(Long currentDay) {
+        Calendar cal = Calendar.getInstance(); // by default, returns right now
+        cal.setTimeInMillis(currentDay);
+        cal.add(Calendar.DAY_OF_YEAR, 1);
+        return getStartOfDay(cal.getTime());
+    }
+
+    // TODO: 11/15/2017 Change this to timeInMillis, to be easily compatible with everything else I'm doing.
     public static Long getStartOfDay(Date time) {
         // use UTC time zone
         Calendar cal = Calendar.getInstance(TimeZone.getDefault());
