@@ -79,7 +79,10 @@ public class GraphViewUtils {
 
         List<Series> seriesList = graphView.getSeries();
         LineGraphSeries series = (LineGraphSeries) seriesList.get(0);
-        series.setBackgroundColor(context.getResources().getColor(R.color.colorGraphBackground));
+        int backgroundColor = context.getResources().getColor(R.color.colorGraphBackground);
+        int backgroundColorOpacityMask = context.getResources().getColor(R.color.colorGraphBackgroundOpacityMask);
+        backgroundColor = backgroundColor & backgroundColorOpacityMask; // Set opacity
+        series.setBackgroundColor(backgroundColor);
         series.setDrawBackground(true);
     }
 

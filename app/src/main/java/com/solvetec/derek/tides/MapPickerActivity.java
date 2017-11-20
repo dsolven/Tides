@@ -46,6 +46,8 @@ public class MapPickerActivity extends AppCompatActivity implements
     private Marker mSelectedMarker;
     private BottomSheetBehavior mBottomSheetBehavior;
     private TextView mTextViewStationName;
+    private TextView mTextViewStationId;
+    private TextView mTextViewStationLatLon;
     private Button mButtonSelectLocation;
 
     private Map<String, Station> mStationsMap;
@@ -88,6 +90,8 @@ public class MapPickerActivity extends AppCompatActivity implements
         mBottomSheetBehavior.setState(BottomSheetBehavior.STATE_HIDDEN);
 
         mTextViewStationName = findViewById(R.id.tv_map_station_name);
+        mTextViewStationId = findViewById(R.id.tv_map_station_id);
+        mTextViewStationLatLon = findViewById(R.id.tv_map_station_latlon);
         mButtonSelectLocation = findViewById(R.id.button_map_select_location);
         mButtonSelectLocation.setOnClickListener(this);
 
@@ -197,7 +201,12 @@ public class MapPickerActivity extends AppCompatActivity implements
 
         // Load data for bottom sheet
         Station station = (Station) mSelectedMarker.getTag();
-        mTextViewStationName.setText(station.station_name);
+        if(station != null) {
+            mTextViewStationName.setText(station.station_name);
+            mTextViewStationId.setText(station.station_id);
+            String latlon = Double.toString(station.latitude) + ", " + Double.toString(station.longitude);
+            mTextViewStationLatLon.setText(latlon);
+        }
 
         return false; // Don't consume markerClick. Allow camera to center on selected marker.
     }

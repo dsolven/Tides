@@ -23,6 +23,7 @@
 
     <!--Component labels-->
     <string name="button_select_location">Select Location</string>
+    <string name="map_station_id_title">Station ID:</string>
 
     <!--Error codes-->
     <string name="prediction_error_network" translatable="true">Network error. Unable to retrieve tide data from webservice.</string>
