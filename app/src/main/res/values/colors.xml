@@ -5,13 +5,26 @@
     <!--<color name="colorPrimaryDark">#303F9F</color>-->
     <!--<color name="colorAccent">#FF4081</color>-->
 
-    <!--Material exported-->
-    <color name="colorPrimary">#7986cb</color>
-    <color name="colorAccent">#aab6fe</color>
-    <color name="colorPrimaryDark">#49599a</color>
+    <!--Material exported, translated to styles.xml -->
+    <color name="colorPrimary">@color/primaryColor</color>
+    <color name="colorAccent">@color/secondaryColor</color>
+    <color name="colorPrimaryDark">@color/primaryDarkColor</color>
     <color name="colorPrimaryText">#000000</color>
 
+    <!--Material exported-->
+    <color name="primaryColor">@color/md_blue_A400</color>
+    <color name="primaryLightColor">#6ec6ff</color>
+    <color name="primaryDarkColor">@color/md_blue_900</color>
+    <color name="secondaryColor">@color/md_amber_900</color>
+    <color name="secondaryLightColor">#fff350</color>
+    <color name="secondaryDarkColor">#c79100</color>
+    <color name="primaryTextColor">#000000</color>
+    <color name="secondaryTextColor">#000000</color>
+
     <!--My custom-->
-    <color name="colorGraphBackground">#4049599a</color>
+    <color name="colorGraphBackground">@color/md_blue_200</color>
+    <color name="colorGraphBackgroundOpacityMask">#40FFFFFF</color>
+
+
 </resources>
 
