@@ -534,14 +534,14 @@ public class MainActivity extends AppCompatActivity
 
         List<HiloDay> hiloDays = new ArrayList<>();
         if (cursor.moveToFirst()) {
-            Long currentDay = DateUtils.getStartOfDay(new Date(cursor.getLong(dateColumnIndex)));
+            Long currentDay = DateUtils.getStartOfDay(new Date(cursor.getLong(dateColumnIndex)).getTime());
             Long lastDay = currentDay;
             List<Double> todayList = new ArrayList<>();
             todayList.add(cursor.getDouble(valueColumnIndex));
             cursor.moveToNext();
 
             do {
-                currentDay = DateUtils.getStartOfDay(new Date(cursor.getLong(dateColumnIndex)));
+                currentDay = DateUtils.getStartOfDay(new Date(cursor.getLong(dateColumnIndex)).getTime());
                 if(currentDay.equals(lastDay)) {
                     // Same day, simply add to existing list
                     todayList.add(cursor.getDouble(valueColumnIndex));

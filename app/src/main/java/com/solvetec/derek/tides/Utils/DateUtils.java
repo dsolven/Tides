@@ -24,25 +24,25 @@ public class DateUtils {
     }
 
     public static Long getStartOfToday() {
-        return getStartOfDay(new Date());
+        return getStartOfDay(new Date().getTime());
     }
 
     public static Long getStartOfTomorrow() {
         Calendar cal = Calendar.getInstance(); // by default, returns right now
         cal.add(Calendar.DAY_OF_YEAR, 1); // increment by one day
-        return getStartOfDay(cal.getTime());
+        return getStartOfDay(cal.getTimeInMillis());
     }
 
     public static Long getStartOfDayOneWeekFromNow() {
         Calendar cal = Calendar.getInstance(); // by default, returns right now
         cal.add(Calendar.DAY_OF_YEAR, 7); // increment by one day
-        return getStartOfDay(cal.getTime());
+        return getStartOfDay(cal.getTimeInMillis());
     }
 
     public static Long getStartOfDaySixMonthsFromNow() {
         Calendar cal = Calendar.getInstance(); // by default, returns right now
         cal.add(Calendar.MONTH, 6); // increment by 6 months
-        return getStartOfDay(cal.getTime());
+        return getStartOfDay(cal.getTimeInMillis());
     }
 
     public static Long getFifteenMinutesInMillis() {
@@ -53,16 +53,15 @@ public class DateUtils {
         Calendar cal = Calendar.getInstance(); // by default, returns right now
         cal.setTimeInMillis(currentDay);
         cal.add(Calendar.DAY_OF_YEAR, 1);
-        return getStartOfDay(cal.getTime());
+        return getStartOfDay(cal.getTimeInMillis());
     }
 
-    // TODO: 11/15/2017 Change this to timeInMillis, to be easily compatible with everything else I'm doing.
-    public static Long getStartOfDay(Date time) {
+    public static Long getStartOfDay(Long millis) {
         // use UTC time zone
         Calendar cal = Calendar.getInstance(TimeZone.getDefault());
         // TODO: 11/6/2017 Hardcoded timezone of phone right now. Need to change this to get the stored timezone, as queried from the google API.
         // TODO: 11/2/2017 Need to offset the startOfDay by the timezone. We care about getting 0H - 23.75h of the current location.
-        cal.setTime(time);
+        cal.setTimeInMillis(millis);
         cal.set(Calendar.HOUR_OF_DAY, 0);
         cal.set(Calendar.MINUTE, 0);
         cal.set(Calendar.SECOND, 0);
