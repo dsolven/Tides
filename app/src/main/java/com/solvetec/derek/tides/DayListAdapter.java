@@ -34,7 +34,7 @@ public class DayListAdapter extends RecyclerView.Adapter<DayListAdapter.DayViewH
      * The interface that receives onClick messages.
      */
     public interface ListItemClickListener {
-        void onListItemClick(int clickedItemIndex);
+        void onListItemClick(int clickedItemIndex, Long clickedItemDate);
     }
 
     /**
@@ -124,6 +124,9 @@ public class DayListAdapter extends RecyclerView.Adapter<DayListAdapter.DayViewH
          */
         void bind(int listIndex) {
             // TODO: 10/21/2017 This should eventually be populated by the database data.
+            if(listIndex >= mHiloDays.size()) {
+                return;
+            }
             HiloDay hiloDay = mHiloDays.get(listIndex);
 
             listItemDateTextView.setText(DateUtils.getDateString(hiloDay.timestamp, mContext.getString(R.string.format_date_weekday_date_and_time)));
@@ -143,7 +146,8 @@ public class DayListAdapter extends RecyclerView.Adapter<DayListAdapter.DayViewH
         @Override
         public void onClick(View v) {
             int clickedPosition = getAdapterPosition();
-            mOnClickListener.onListItemClick(clickedPosition);
+            HiloDay hiloDay = mHiloDays.get(clickedPosition);
+            mOnClickListener.onListItemClick(clickedPosition, hiloDay.timestamp);
         }
     }
 }

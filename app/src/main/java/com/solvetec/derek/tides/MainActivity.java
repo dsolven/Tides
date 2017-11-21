@@ -23,6 +23,7 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.Wsdl2Code.WebServices.PredictionsService.BoundaryDate;
@@ -63,9 +64,13 @@ public class MainActivity extends AppCompatActivity
     private DayListAdapter mDayListAdapter;
     private RecyclerView mDayListRecyclerView;
     private GraphView mGraphView;
+    private TextView mTextViewSelectedDay;
     private Cursor mGraphCursor;
     public Map<String, Station> mStationsMap;
     private static final int NUM_DAYS_TO_DISPLAY = 14;
+    private static final int NUM_WL15_POINTS_TO_DISPLAY = 4 * 24 + 1;
+    private Long mSelectedDay;
+    private String mSelectedStationId;
 
     private Long mTimezoneOffset;
 
@@ -92,12 +97,17 @@ public class MainActivity extends AppCompatActivity
         // TODO: 11/13/2017 I need to separate the "build" parts of the UI from the "populate" parts of the UI. Leave the build in onCreate, move the populate to onResume.
         // Setup the GraphView
         mGraphView = (GraphView) findViewById(R.id.graph_main);
+        mTextViewSelectedDay = findViewById(R.id.tv_displayed_date);
 
         // Setup the RecyclerView
         mDayListRecyclerView = (RecyclerView) findViewById(R.id.rv_list_of_days);
         LinearLayoutManager layoutManager = new LinearLayoutManager(this);
         mDayListRecyclerView.setLayoutManager(layoutManager);
         mDayListRecyclerView.setHasFixedSize(true);
+
+        // Set selected day to today
+        mSelectedDay = DateUtils.getStartOfToday();
+
     }
 
 
@@ -108,53 +118,35 @@ public class MainActivity extends AppCompatActivity
 
         // Load sharedPreferences again, as they may have changed.
         SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
-        String stationId = sharedPreferences.getString(getString(R.string.pref_location_key), getString(R.string.pref_location_default));
+        mSelectedStationId = sharedPreferences.getString(getString(R.string.pref_location_key), getString(R.string.pref_location_default));
 
-        // Load all stations from the database into memory, so other parts of the code can use it easily
-        Bundle stationsBundle = new Bundle();
-        stationsBundle.putStringArray(PROJECTION_KEY, new String[] {
-                TidesEntry.COLUMN_STATION_ID,
-                TidesEntry.COLUMN_STATION_NAME,
-                TidesEntry.COLUMN_STATION_LON,
-                TidesEntry.COLUMN_STATION_LAT });
-        stationsBundle.putString(SELECTION_KEY, null);
-        stationsBundle.putStringArray(SELECTION_ARGS_KEY, null);
-        stationsBundle.putString(SORT_BY_KEY, TidesEntry.COLUMN_STATION_ID + " ASC");
-        getSupportLoaderManager().initLoader(ID_STATIONS_LOADER, stationsBundle, this);
 
-        // Setup the list of days
+        // Create loaders
+        // Stations Loader
+        getSupportLoaderManager().initLoader(ID_STATIONS_LOADER, null, this);
+
+        // HILO Loader
         Bundle hiloBundle = new Bundle();
-        hiloBundle.putStringArray(PROJECTION_KEY, new String[] {TidesEntry.COLUMN_DATE, TidesEntry.COLUMN_VALUE});
-        hiloBundle.putString(SELECTION_KEY, "(" + TidesEntry.COLUMN_STATION_ID + "=?) ");
-        hiloBundle.putStringArray(SELECTION_ARGS_KEY, new String[] {stationId});
-        hiloBundle.putString(SORT_BY_KEY, TidesEntry.COLUMN_DATE + " ASC");
-        getSupportLoaderManager().initLoader(ID_HILO_LOADER, hiloBundle, this);
+        Long today = DateUtils.getStartOfToday();
+        Long tomorrow = DateUtils.getStartOfDaySixMonthsFromNow();
+        hiloBundle.putStringArray(SELECTION_ARGS_KEY, new String[] {mSelectedStationId, today.toString(), tomorrow.toString()});
+        getSupportLoaderManager().restartLoader(ID_HILO_LOADER, hiloBundle, this);
 
         // TODO: 10/27/2017 Remember to clean up database on every start: If entry is for older than yesterday, remove it.
+
+        // WL15 Loader
+        Bundle bundle = new Bundle();
+        Long selectedDayPlusOne = DateUtils.getStartOfDayAfterThis(mSelectedDay);
+        String[] selectionArgs = {mSelectedStationId, mSelectedDay.toString(), selectedDayPlusOne.toString()};
+        bundle.putStringArray(SELECTION_ARGS_KEY, selectionArgs);
+        getSupportLoaderManager().restartLoader(ID_WL15_LOADER, bundle, this);
+
+        // TODO: 10/31/2017 Immediately start a data sync here.
 
         // TODO: 11/15/2017 Connect up the timezone API, to actually get the selected station timezone, and use it in date calculations.
         Station exampleWhiteRockStation = PredictionServiceHelper.makeExampleStation();
         GetTimezoneOffset gto = new GetTimezoneOffset();
         gto.execute(exampleWhiteRockStation);
-
-        // TODO: 11/15/2017 Move this to a sync function, and allow the "day to display" as a param. This is needed to allow for the list of days click listener to change the day displayed.
-        // The cursorLoader to get the latest info from the WL15 database, and display it in the GraphView.
-        // This currently loads the data from a single day, starting from
-        Bundle bundle = new Bundle();
-        String[] projection = {TidesEntry.COLUMN_DATE, TidesEntry.COLUMN_VALUE};
-        String selection = "(" + TidesEntry.COLUMN_STATION_ID + "=?) "
-                + "AND (" + TidesEntry.COLUMN_DATE + " BETWEEN ? AND ?)";
-        Long today = DateUtils.getStartOfToday();
-        Long tomorrow = DateUtils.getStartOfTomorrow();
-        String[] selectionArgs = {stationId, today.toString(), tomorrow.toString()};
-        String sortBy = TidesEntry.COLUMN_DATE + " ASC";
-        bundle.putStringArray(PROJECTION_KEY, projection);
-        bundle.putString(SELECTION_KEY, selection);
-        bundle.putStringArray(SELECTION_ARGS_KEY, selectionArgs);
-        bundle.putString(SORT_BY_KEY, sortBy);
-        getSupportLoaderManager().initLoader(ID_WL15_LOADER, bundle, this);
-
-        // TODO: 10/31/2017 Immediately start a data sync here.
 
 
         // TODO: 10/21/2017 Remove the button, once I have a database and contentProvider to handle the transactions.
@@ -203,11 +195,17 @@ public class MainActivity extends AppCompatActivity
      * @param clickedItemIndex
      */
     @Override
-    public void onListItemClick(int clickedItemIndex) {
-        // TODO: 10/21/2017 Make this do something... Change the main graphview? Open a new activity showing details?
-        // TODO: 10/25/2017 Why isn't this showing a nice click animation?
-        String toastMessage = "Item # " + clickedItemIndex + " clicked.";
-        Toast.makeText(this, toastMessage, Toast.LENGTH_SHORT).show();
+    public void onListItemClick(int clickedItemIndex, Long clickedItemDate ) {
+        mSelectedDay = clickedItemDate;
+
+        // TODO: 11/20/2017 Make a function
+        // WL15 Loader
+        Bundle bundle = new Bundle();
+        Long selectedDayPlusOne = DateUtils.getStartOfDayAfterThis(mSelectedDay);
+        String[] selectionArgs = {mSelectedStationId, mSelectedDay.toString(), selectedDayPlusOne.toString()};
+        bundle.putStringArray(SELECTION_ARGS_KEY, selectionArgs);
+        getSupportLoaderManager().restartLoader(ID_WL15_LOADER, bundle, this);
+
     }
 
     @Override
@@ -243,29 +241,34 @@ public class MainActivity extends AppCompatActivity
         switch (id) {
             case ID_WL15_LOADER:
                 Uri wl15QueryUri = TidesEntry.WL15_CONTENT_URI;
-
                 return new CursorLoader(this,
                         wl15QueryUri,
-                        args.getStringArray(PROJECTION_KEY),
-                        args.getString(SELECTION_KEY),
+                        new String[] {TidesEntry.COLUMN_DATE, TidesEntry.COLUMN_VALUE},
+                        "(" + TidesEntry.COLUMN_STATION_ID + "=?) "
+                                + "AND (" + TidesEntry.COLUMN_DATE + " BETWEEN ? AND ?)",
                         args.getStringArray(SELECTION_ARGS_KEY),
-                        args.getString(SORT_BY_KEY));
+                        TidesEntry.COLUMN_DATE + " ASC");
             case ID_HILO_LOADER:
                 Uri hiloQueryUri = TidesEntry.HILO_CONTENT_URI;
                 return new CursorLoader(this,
                         hiloQueryUri,
-                        args.getStringArray(PROJECTION_KEY),
-                        args.getString(SELECTION_KEY),
+                        new String[] {TidesEntry.COLUMN_DATE, TidesEntry.COLUMN_VALUE},
+                        "(" + TidesEntry.COLUMN_STATION_ID + "=?) "
+                                + "AND (" + TidesEntry.COLUMN_DATE + " BETWEEN ? AND ?)",
                         args.getStringArray(SELECTION_ARGS_KEY),
-                        args.getString(SORT_BY_KEY));
+                        TidesEntry.COLUMN_DATE + " ASC");
             case ID_STATIONS_LOADER:
                 Uri stationsQueryUri = TidesEntry.STATION_INFO_CONTENT_URI;
                 return new CursorLoader(this,
                         stationsQueryUri,
-                        args.getStringArray(PROJECTION_KEY),
-                        args.getString(SELECTION_KEY),
-                        args.getStringArray(SELECTION_ARGS_KEY),
-                        args.getString(SORT_BY_KEY));
+                        new String[] {
+                                TidesEntry.COLUMN_STATION_ID,
+                                TidesEntry.COLUMN_STATION_NAME,
+                                TidesEntry.COLUMN_STATION_LON,
+                                TidesEntry.COLUMN_STATION_LAT },
+                        null,
+                        null,
+                        TidesEntry.COLUMN_STATION_ID + " ASC");
             default:
                 throw new RuntimeException("Loader not implemented: " + id);
         }
@@ -278,7 +281,7 @@ public class MainActivity extends AppCompatActivity
 
         switch(loader.getId()) {
             case ID_WL15_LOADER:
-                if (dataCursor.getCount() != 0) {
+                if (dataCursor.getCount() == NUM_WL15_POINTS_TO_DISPLAY) {
                     mGraphCursor = dataCursor;
                     DataPoint[] newDataPoints = GraphViewUtils.getSeries(dataCursor);
                     // TODO: 11/1/2017 This is where I need to verify the timezone and current time. At this point, I've guarenteed that the timezone async has completed.
@@ -297,9 +300,16 @@ public class MainActivity extends AppCompatActivity
                         LineGraphSeries series = (LineGraphSeries) seriesList.get(0);
                         series.resetData(newDataPoints);
                         GraphViewUtils.formatGraphBounds(mGraphView);
-
                     }
 
+                    // Set non-graph texts
+                    dataCursor.moveToFirst();
+                    Long date = dataCursor.getLong(dataCursor.getColumnIndex(TidesContract.TidesEntry.COLUMN_DATE));
+                    String dateString = DateUtils.getDateString(date, getString(R.string.format_date_date_and_time));
+                    mTextViewSelectedDay.setText(dateString);
+
+                } else {
+                    Toast.makeText(this, dataCursor.getCount() + " WL15 points, instead of " + NUM_WL15_POINTS_TO_DISPLAY, Toast.LENGTH_SHORT).show();
                 }
                 Log.d(TAG, "onLoadFinished: WL15 onLoadFinished complete.");
                 break;
