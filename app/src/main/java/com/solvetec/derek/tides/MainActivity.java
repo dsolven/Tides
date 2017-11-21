@@ -10,6 +10,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.preference.PreferenceFragment;
 import android.preference.PreferenceManager;
+import android.support.annotation.NonNull;
 import android.support.v4.app.LoaderManager;
 import android.support.v4.content.CursorLoader;
 import android.support.v4.content.Loader;
@@ -23,6 +24,7 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
+import android.widget.CalendarView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -46,6 +48,7 @@ import com.solvetec.derek.tides.utils.PredictionServiceHelper;
 import com.solvetec.derek.tides.data.TidesContract.TidesEntry;
 
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -58,12 +61,14 @@ import java.util.Map;
 
 public class MainActivity extends AppCompatActivity
         implements DayListAdapter.ListItemClickListener,
-        LoaderManager.LoaderCallbacks {
+        LoaderManager.LoaderCallbacks,
+        CalendarView.OnDateChangeListener{
 
     private static final String TAG = MainActivity.class.getSimpleName();
     private DayListAdapter mDayListAdapter;
     private RecyclerView mDayListRecyclerView;
     private GraphView mGraphView;
+    private CalendarView mCalendarView;
     private TextView mTextViewSelectedDay;
     private Cursor mGraphCursor;
     public Map<String, Station> mStationsMap;
@@ -98,6 +103,10 @@ public class MainActivity extends AppCompatActivity
         // Setup the GraphView
         mGraphView = (GraphView) findViewById(R.id.graph_main);
         mTextViewSelectedDay = findViewById(R.id.tv_displayed_date);
+
+        // Setup the calendarView
+        mCalendarView = findViewById(R.id.cv_main_calendar);
+        mCalendarView.setOnDateChangeListener(this);
 
         // Setup the RecyclerView
         mDayListRecyclerView = (RecyclerView) findViewById(R.id.rv_list_of_days);
@@ -150,13 +159,13 @@ public class MainActivity extends AppCompatActivity
 
 
         // TODO: 10/21/2017 Remove the button, once I have a database and contentProvider to handle the transactions.
-        Button buttonTestAll = (Button) findViewById(R.id.button_test_all_predictions);
-        buttonTestAll.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                new PredictionsTestAllAsync().execute();
-            }
-        });
+//        Button buttonTestAll = (Button) findViewById(R.id.button_test_all_predictions);
+//        buttonTestAll.setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View v) {
+//                new PredictionsTestAllAsync().execute();
+//            }
+//        });
 
         Button buttonTestWl15Search = (Button) findViewById(R.id.button_test_wl15_search_prediction);
         buttonTestWl15Search.setOnClickListener(new View.OnClickListener() {
@@ -343,6 +352,22 @@ public class MainActivity extends AppCompatActivity
         if (loader.getId() == ID_WL15_LOADER) {
             mGraphCursor = null;
         }
+    }
+
+    @Override
+    public void onSelectedDayChange(@NonNull CalendarView view, int year, int month, int dayOfMonth) {
+        Calendar cal = Calendar.getInstance();
+        cal.set(year, month, dayOfMonth);
+        mSelectedDay = DateUtils.getStartOfDay(cal.getTimeInMillis());
+        Log.d(TAG, "onSelectedDayChange: Selected day:" + DateUtils.getDateString(mSelectedDay, getString(R.string.format_date_date_and_time)));
+
+        // TODO: 11/20/2017 Make a function
+        // WL15 Loader
+        Bundle bundle = new Bundle();
+        Long selectedDayPlusOne = DateUtils.getStartOfDayAfterThis(mSelectedDay);
+        String[] selectionArgs = {mSelectedStationId, mSelectedDay.toString(), selectedDayPlusOne.toString()};
+        bundle.putStringArray(SELECTION_ARGS_KEY, selectionArgs);
+        getSupportLoaderManager().restartLoader(ID_WL15_LOADER, bundle, this);
     }
 
 
