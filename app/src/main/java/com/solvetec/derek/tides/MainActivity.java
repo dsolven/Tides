@@ -40,6 +40,7 @@ import com.Wsdl2Code.WebServices.PredictionsService.VectorMetadata;
 import com.jjoe64.graphview.GraphView;
 import com.jjoe64.graphview.series.DataPoint;
 import com.jjoe64.graphview.series.LineGraphSeries;
+import com.jjoe64.graphview.series.PointsGraphSeries;
 import com.jjoe64.graphview.series.Series;
 import com.solvetec.derek.tides.data.TidesContract;
 import com.solvetec.derek.tides.utils.DateUtils;
@@ -74,8 +75,10 @@ public class MainActivity extends AppCompatActivity
     public Map<String, Station> mStationsMap;
     private static final int NUM_DAYS_TO_DISPLAY = 14;
     private static final int NUM_WL15_POINTS_TO_DISPLAY = 4 * 24 + 1;
+    private static final long NUM_MILLIS_IN_15_MINUTES = 15 * 60 * 1000;
     private Long mSelectedDay;
     private String mSelectedStationId;
+    private String mPrevSelectedStationId;
 
     private Long mTimezoneOffset;
 
@@ -97,6 +100,9 @@ public class MainActivity extends AppCompatActivity
         // Do any required "first run" initialization
         checkFirstRun();
         PreferenceManager.setDefaultValues(this, R.xml.pref_general, false);
+        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
+        mSelectedStationId = sharedPreferences.getString(getString(R.string.pref_location_key), getString(R.string.pref_location_default));
+        mPrevSelectedStationId = mSelectedStationId;
 
 
         // TODO: 11/13/2017 I need to separate the "build" parts of the UI from the "populate" parts of the UI. Leave the build in onCreate, move the populate to onResume.
@@ -129,6 +135,10 @@ public class MainActivity extends AppCompatActivity
         SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
         mSelectedStationId = sharedPreferences.getString(getString(R.string.pref_location_key), getString(R.string.pref_location_default));
 
+        if(!mPrevSelectedStationId.equals(mSelectedStationId)) {
+            // Station has changed
+            mGraphView.removeAllSeries();
+        }
 
         // Create loaders
         // Stations Loader
@@ -292,23 +302,78 @@ public class MainActivity extends AppCompatActivity
             case ID_WL15_LOADER:
                 if (dataCursor.getCount() == NUM_WL15_POINTS_TO_DISPLAY) {
                     mGraphCursor = dataCursor;
-                    DataPoint[] newDataPoints = GraphViewUtils.getSeries(dataCursor);
+                    DataPoint[] newTidePoints = GraphViewUtils.getSeries(dataCursor);
                     // TODO: 11/1/2017 This is where I need to verify the timezone and current time. At this point, I've guarenteed that the timezone async has completed.
                     // TODO: 10/31/2017 How should I correctly get the cursorLoader to repopulate the cursor when I click on a different day? Just call loader.reset or something?
 
                     List<Series> seriesList = mGraphView.getSeries();
 
+                    // Calculate current time
+                    Long now = new Date().getTime();
+                    Long xStart = (long) (newTidePoints[0].getX());
+                    int currentTimeIndex = (int)((now - xStart) / NUM_MILLIS_IN_15_MINUTES);
+
                     if(seriesList.size() == 0) {
                         // First time
-                        LineGraphSeries<DataPoint> newSeries = new LineGraphSeries<>(newDataPoints);
-                        mGraphView.addSeries(newSeries);
+                        LineGraphSeries<DataPoint> newTideSeries = new LineGraphSeries<>(newTidePoints);
+
+                        // Add sunrise/sunset
+                        // TODO: 11/22/2017 Have to do separate async task to get current sunrise/sunset. So, this needs to be in separate function that gets called by both.
+                        DataPoint start = new DataPoint(newTidePoints[0].getX(), newTideSeries.getHighestValueY() * 2);
+                        DataPoint end = new DataPoint(newTidePoints[newTidePoints.length-1].getX(), newTideSeries.getHighestValueY() * 2);
+                        DataPoint testSunrise = new DataPoint(newTidePoints[20].getX(), newTideSeries.getHighestValueY() * 2);
+                        DataPoint testSunrise2 = new DataPoint(newTidePoints[21].getX(), newTideSeries.getHighestValueY() * 2);
+                        DataPoint testSunset = new DataPoint(newTidePoints[70].getX(), newTideSeries.getHighestValueY() * 2);
+                        DataPoint testSunset2 = new DataPoint(newTidePoints[71].getX(), newTideSeries.getHighestValueY() * 2);
+//                        DataPoint[] sunriseDPs = {start, testSunrise};
+                        DataPoint[] sunriseDPs = {testSunrise, testSunrise2};
+//                        DataPoint[] sunsetDPs = {testSunset, end};
+                        DataPoint[] sunsetDPs = {testSunset, testSunset2};
+                        LineGraphSeries<DataPoint> sunriseSeries = new LineGraphSeries<>(sunriseDPs);
+                        LineGraphSeries<DataPoint> sunsetSeries = new LineGraphSeries<>(sunsetDPs);
+                        mGraphView.addSeries(sunriseSeries); //GRAPH_SUNRISE
+                        mGraphView.addSeries(sunsetSeries); //GRAPH_SUNSET
+
+                        // Tide data
+                        mGraphView.addSeries(newTideSeries); //GRAPH_TIDE
+
+                        // Add series for current time
+                        if(currentTimeIndex >= 0 && currentTimeIndex < newTidePoints.length) {
+                            // Current time is within this dataset
+                            DataPoint closestDataPoint = newTidePoints[currentTimeIndex];
+                            DataPoint[] currentTimeDataPoint = {new DataPoint(closestDataPoint.getX(), closestDataPoint.getY())};
+                            PointsGraphSeries<DataPoint> currentTimeSeries = new PointsGraphSeries<>(currentTimeDataPoint);
+                            mGraphView.addSeries(currentTimeSeries); //GRAPH_CURRENT_TIME
+                        } else {
+                            // Current time not within this dataset, but we still need to create it
+                            DataPoint[] currentTimeDataPoint = {new DataPoint(now, 0)};
+                            PointsGraphSeries<DataPoint> currentTimeSeries = new PointsGraphSeries<>(currentTimeDataPoint);
+                            mGraphView.addSeries(currentTimeSeries); //GRAPH_CURRENT_TIME
+                        }
+
+
+
                         GraphViewUtils.formatSeriesColor(mGraphView);
                         GraphViewUtils.formatGraphBounds(mGraphView);
+
+
                     } else {
                         // Series already created, just update
-                        LineGraphSeries series = (LineGraphSeries) seriesList.get(0);
-                        series.resetData(newDataPoints);
+                        LineGraphSeries series = (LineGraphSeries) seriesList.get(GraphViewUtils.GRAPH_TIDE);
+                        series.resetData(newTidePoints);
                         GraphViewUtils.formatGraphBounds(mGraphView);
+
+                        // Update current time
+                        if(currentTimeIndex >= 0 && currentTimeIndex < newTidePoints.length) {
+                            // Current time is within this dataset
+                            DataPoint closestDataPoint = newTidePoints[currentTimeIndex];
+                            DataPoint[] currentTimeDataPoint = {new DataPoint(closestDataPoint.getX(), closestDataPoint.getY())};
+                            PointsGraphSeries series2 = (PointsGraphSeries) seriesList.get(GraphViewUtils.GRAPH_CURRENT_TIME);
+                            series2.resetData(currentTimeDataPoint);
+                        }
+
+                        // Update sunrise / sunset
+                        // TODO: 11/22/2017 Make sunrise/sunset change per day
                     }
 
                     // Set non-graph texts

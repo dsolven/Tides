@@ -23,6 +23,11 @@ import java.util.List;
 
 public class GraphViewUtils {
 
+    public static final int GRAPH_SUNRISE = 0;
+    public static final int GRAPH_SUNSET = 1;
+    public static final int GRAPH_TIDE = 2;
+    public static final int GRAPH_CURRENT_TIME = 3;
+
     public static DataPoint[] getSeries(Cursor cursor) {
 
         ArrayList<DataPoint> seriesList = new ArrayList<>();
@@ -43,7 +48,7 @@ public class GraphViewUtils {
         // TODO: 11/6/2017 Dev: Here are all of the objects inside graphView
         Viewport viewport = graphView.getViewport();
         List<Series> seriesList = graphView.getSeries();
-        LineGraphSeries series = (LineGraphSeries) seriesList.get(0);
+        LineGraphSeries series = (LineGraphSeries) seriesList.get(GRAPH_TIDE);
         GridLabelRenderer glr = graphView.getGridLabelRenderer();
         final Context context = graphView.getContext();
 
@@ -78,12 +83,27 @@ public class GraphViewUtils {
         Context context = graphView.getContext();
 
         List<Series> seriesList = graphView.getSeries();
-        LineGraphSeries series = (LineGraphSeries) seriesList.get(0);
+
+        // Tide data
+        LineGraphSeries series = (LineGraphSeries) seriesList.get(GRAPH_TIDE);
         int backgroundColor = context.getResources().getColor(R.color.colorGraphBackground);
         int backgroundColorOpacityMask = context.getResources().getColor(R.color.colorGraphBackgroundOpacityMask);
         backgroundColor = backgroundColor & backgroundColorOpacityMask; // Set opacity
         series.setBackgroundColor(backgroundColor);
         series.setDrawBackground(true);
+
+        // Sunrise and sunset
+        int sunsetColor = context.getResources().getColor(R.color.colorGraphSunsetBackground);
+        int sunsetColorOpacityMask = context.getResources().getColor(R.color.colorGraphSunsetBackgroundOpacityMask);
+        sunsetColor = sunsetColor & sunsetColorOpacityMask; // Set opacity
+        // Sunrise
+        LineGraphSeries sunriseSeries = (LineGraphSeries) seriesList.get(GRAPH_SUNRISE);
+        sunriseSeries.setBackgroundColor(sunsetColor);
+        sunriseSeries.setDrawBackground(true);
+        // Sunset
+        LineGraphSeries sunsetSeries = (LineGraphSeries) seriesList.get(GRAPH_SUNSET);
+        sunsetSeries.setBackgroundColor(sunsetColor);
+        sunsetSeries.setDrawBackground(true);
     }
 
     // Copied from GridLabelRenderer.java.

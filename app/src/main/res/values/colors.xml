@@ -25,6 +25,9 @@
     <color name="colorGraphBackground">@color/md_blue_200</color>
     <color name="colorGraphBackgroundOpacityMask">#40FFFFFF</color>
 
+    <color name="colorGraphSunsetBackground">@color/md_yellow_700</color>
+    <color name="colorGraphSunsetBackgroundOpacityMask">#40FFFFFF</color>
+
 
 </resources>
 
