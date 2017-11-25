@@ -12,14 +12,20 @@ import com.Wsdl2Code.WebServices.PredictionsService.ResultSet;
 import com.Wsdl2Code.WebServices.PredictionsService.SearchParams;
 import com.Wsdl2Code.WebServices.PredictionsService.Station;
 import com.Wsdl2Code.WebServices.PredictionsService.VectorMetadata;
+import com.solvetec.derek.tides.HiloDay;
 import com.solvetec.derek.tides.R;
 import com.solvetec.derek.tides.data.TidesContract;
+import com.solvetec.derek.tides.data.TidesContract.TidesEntry;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.regex.Pattern;
 
 /**
@@ -162,6 +168,27 @@ public class PredictionServiceHelper {
 
     }
 
+    public static Map<String, Station> parseStationCursor(Cursor cursor) {
+        Map<String, Station> stationMap = new LinkedHashMap<>();
+
+        final int STATION_ID_INDEX = cursor.getColumnIndex(TidesEntry.COLUMN_STATION_ID);
+        final int STATION_NAME_INDEX = cursor.getColumnIndex(TidesEntry.COLUMN_STATION_NAME);
+        final int STATION_LAT_INDEX = cursor.getColumnIndex(TidesEntry.COLUMN_STATION_LAT);
+        final int STATION_LON_INDEX = cursor.getColumnIndex(TidesEntry.COLUMN_STATION_LON);
+
+        if(cursor.moveToFirst()) {
+            do {
+                Station station = new Station(
+                        cursor.getString(STATION_ID_INDEX),
+                        cursor.getString(STATION_NAME_INDEX),
+                        cursor.getDouble(STATION_LAT_INDEX),
+                        cursor.getDouble(STATION_LON_INDEX));
+                stationMap.put(station.station_id, station);
+            } while(cursor.moveToNext());
+        }
+        return stationMap;
+    }
+
     // TODO: 10/22/2017 This won't pull all of the necessary info (only the database info, not the "is this data valid" metadata). This might not be the best architecture for this task...
 
     /**
@@ -215,6 +242,42 @@ public class PredictionServiceHelper {
             }
         }
         return station;
+    }
+
+    // TODO: 11/5/2017 This is ripe for a unit test
+    public static List<HiloDay> organizeHiloCursorIntoDays(Cursor cursor) {
+
+        int valueColumnIndex = cursor.getColumnIndex(TidesContract.TidesEntry.COLUMN_VALUE);
+        int dateColumnIndex = cursor.getColumnIndex(TidesContract.TidesEntry.COLUMN_DATE);
+
+        List<HiloDay> hiloDays = new ArrayList<>();
+        if (cursor.moveToFirst()) {
+            Long currentDay = DateUtils.getStartOfDay(new Date(cursor.getLong(dateColumnIndex)).getTime());
+            Long lastDay = currentDay;
+            List<Double> todayList = new ArrayList<>();
+            todayList.add(cursor.getDouble(valueColumnIndex));
+            cursor.moveToNext();
+
+            do {
+                currentDay = DateUtils.getStartOfDay(new Date(cursor.getLong(dateColumnIndex)).getTime());
+                if(currentDay.equals(lastDay)) {
+                    // Same day, simply add to existing list
+                    todayList.add(cursor.getDouble(valueColumnIndex));
+                } else {
+                    // New day, start new list
+                    hiloDays.add(new HiloDay(currentDay, new ArrayList<>(todayList)));
+                    todayList.clear();
+                    todayList.add(cursor.getDouble(valueColumnIndex));
+                }
+
+                lastDay = currentDay;
+            } while (cursor.moveToNext());
+
+            // Handle last entry
+            hiloDays.add(new HiloDay(currentDay, new ArrayList<>(todayList)));
+        }
+
+        return hiloDays;
     }
 
     /**

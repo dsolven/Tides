@@ -68,13 +68,10 @@ import java.util.Map;
 
 
 public class MainActivity extends AppCompatActivity
-        implements DayListAdapter.ListItemClickListener,
-        LoaderManager.LoaderCallbacks,
+        implements LoaderManager.LoaderCallbacks,
         CalendarView.OnDateChangeListener{
 
     private static final String TAG = MainActivity.class.getSimpleName();
-    private DayListAdapter mDayListAdapter;
-    private RecyclerView mDayListRecyclerView;
     private GraphView mGraphView;
     private ProgressBar mProgressBarGraph;
     private CalendarView mCalendarView;
@@ -121,12 +118,6 @@ public class MainActivity extends AppCompatActivity
         mCalendarView = findViewById(R.id.cv_main_calendar);
         mCalendarView.setOnDateChangeListener(this);
 
-        // Setup the RecyclerView
-        mDayListRecyclerView = (RecyclerView) findViewById(R.id.rv_list_of_days);
-        LinearLayoutManager layoutManager = new LinearLayoutManager(this);
-        mDayListRecyclerView.setLayoutManager(layoutManager);
-        mDayListRecyclerView.setHasFixedSize(true);
-
         // Set selected day to today
         mSelectedDay = DateUtils.getStartOfToday();
 
@@ -155,11 +146,11 @@ public class MainActivity extends AppCompatActivity
         getSupportLoaderManager().initLoader(ID_STATIONS_LOADER, null, this);
 
         // HILO Loader
-        Bundle hiloBundle = new Bundle();
-        Long today = DateUtils.getStartOfToday();
-        Long tomorrow = DateUtils.getStartOfDaySixMonthsFromNow();
-        hiloBundle.putStringArray(SELECTION_ARGS_KEY, new String[] {mSelectedStationId, today.toString(), tomorrow.toString()});
-        getSupportLoaderManager().restartLoader(ID_HILO_LOADER, hiloBundle, this);
+//        Bundle hiloBundle = new Bundle();
+//        Long today = DateUtils.getStartOfToday();
+//        Long tomorrow = DateUtils.getStartOfDaySixMonthsFromNow();
+//        hiloBundle.putStringArray(SELECTION_ARGS_KEY, new String[] {mSelectedStationId, today.toString(), tomorrow.toString()});
+//        getSupportLoaderManager().restartLoader(ID_HILO_LOADER, hiloBundle, this);
 
         // TODO: 10/27/2017 Remember to clean up database on every start: If entry is for older than yesterday, remove it.
 
@@ -178,25 +169,6 @@ public class MainActivity extends AppCompatActivity
 
     }
 
-    // DayListAdapter override methods
-    /**
-     * This is where we receive our callback from
-     * {@link com.solvetec.derek.tides.DayListAdapter.ListItemClickListener}
-     * @param clickedItemIndex
-     */
-    @Override
-    public void onListItemClick(int clickedItemIndex, Long clickedItemDate ) {
-        mSelectedDay = clickedItemDate;
-
-        // TODO: 11/20/2017 Make a function
-        // WL15 Loader
-        Bundle bundle = new Bundle();
-        Long selectedDayPlusOne = DateUtils.getStartOfDayAfterThis(mSelectedDay);
-        String[] selectionArgs = {mSelectedStationId, mSelectedDay.toString(), selectedDayPlusOne.toString()};
-        bundle.putStringArray(SELECTION_ARGS_KEY, selectionArgs);
-        getSupportLoaderManager().restartLoader(ID_WL15_LOADER, bundle, this);
-
-    }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -355,7 +327,7 @@ public class MainActivity extends AppCompatActivity
                     // Set non-graph texts
                     dataCursor.moveToFirst();
                     Long date = dataCursor.getLong(dataCursor.getColumnIndex(TidesContract.TidesEntry.COLUMN_DATE));
-                    String dateString = DateUtils.getDateString(date, getString(R.string.format_date_date_and_time));
+                    String dateString = DateUtils.getDateString(date, getString(R.string.format_date_weekday_date));
                     mTextViewSelectedDay.setText(dateString);
 
                 } else {
@@ -374,15 +346,13 @@ public class MainActivity extends AppCompatActivity
                 break;
             case ID_HILO_LOADER:
                 if (dataCursor.getCount() != 0) {
-                    List<HiloDay> hiloDays = organizeHiloCursorIntoDays(dataCursor);
-                    mDayListAdapter = new DayListAdapter(NUM_DAYS_TO_DISPLAY, this, hiloDays, this);
-                    mDayListRecyclerView.setAdapter(mDayListAdapter);
+                    // TODO: 11/25/2017 I'm not using HILO info for anything right now, but maybe in the future.
                 }
                 Log.d(TAG, "onLoadFinished: HILO onLoadFinished complete.");
                 break;
             case ID_STATIONS_LOADER:
                 if (dataCursor.getCount() != 0) {
-                    mStationsMap = parseStationCursor(dataCursor);
+                    mStationsMap = PredictionServiceHelper.parseStationCursor(dataCursor);
                     setupTitleBar(mStationsMap);
                 }
                 Log.d(TAG, "onLoadFinished: STATIONS onLoadFinished complete.");
@@ -583,65 +553,6 @@ public class MainActivity extends AppCompatActivity
 
         // Update the shared preferences with the current version code
         prefs.edit().putInt(PREF_VERSION_CODE_KEY, currentVersionCode).apply();
-    }
-
-    // TODO: 11/11/2017 Move this to a new file?
-    public static Map<String, Station> parseStationCursor(Cursor cursor) {
-        Map<String, Station> stationMap = new LinkedHashMap<>();
-
-        final int STATION_ID_INDEX = cursor.getColumnIndex(TidesEntry.COLUMN_STATION_ID);
-        final int STATION_NAME_INDEX = cursor.getColumnIndex(TidesEntry.COLUMN_STATION_NAME);
-        final int STATION_LAT_INDEX = cursor.getColumnIndex(TidesEntry.COLUMN_STATION_LAT);
-        final int STATION_LON_INDEX = cursor.getColumnIndex(TidesEntry.COLUMN_STATION_LON);
-
-        if(cursor.moveToFirst()) {
-            do {
-                Station station = new Station(
-                        cursor.getString(STATION_ID_INDEX),
-                        cursor.getString(STATION_NAME_INDEX),
-                        cursor.getDouble(STATION_LAT_INDEX),
-                        cursor.getDouble(STATION_LON_INDEX));
-                stationMap.put(station.station_id, station);
-            } while(cursor.moveToNext());
-        }
-        return stationMap;
-    }
-
-    // TODO: 11/5/2017 Move this to a new file?
-    // TODO: 11/5/2017 This is ripe for a unit test
-    public static List<HiloDay> organizeHiloCursorIntoDays(Cursor cursor) {
-
-        int valueColumnIndex = cursor.getColumnIndex(TidesContract.TidesEntry.COLUMN_VALUE);
-        int dateColumnIndex = cursor.getColumnIndex(TidesContract.TidesEntry.COLUMN_DATE);
-
-        List<HiloDay> hiloDays = new ArrayList<>();
-        if (cursor.moveToFirst()) {
-            Long currentDay = DateUtils.getStartOfDay(new Date(cursor.getLong(dateColumnIndex)).getTime());
-            Long lastDay = currentDay;
-            List<Double> todayList = new ArrayList<>();
-            todayList.add(cursor.getDouble(valueColumnIndex));
-            cursor.moveToNext();
-
-            do {
-                currentDay = DateUtils.getStartOfDay(new Date(cursor.getLong(dateColumnIndex)).getTime());
-                if(currentDay.equals(lastDay)) {
-                    // Same day, simply add to existing list
-                    todayList.add(cursor.getDouble(valueColumnIndex));
-                } else {
-                    // New day, start new list
-                    hiloDays.add(new HiloDay(currentDay, new ArrayList<>(todayList)));
-                    todayList.clear();
-                    todayList.add(cursor.getDouble(valueColumnIndex));
-                }
-
-                lastDay = currentDay;
-            } while (cursor.moveToNext());
-
-            // Handle last entry
-            hiloDays.add(new HiloDay(currentDay, new ArrayList<>(todayList)));
-        }
-
-        return hiloDays;
     }
 
     public static boolean isEmulator() {

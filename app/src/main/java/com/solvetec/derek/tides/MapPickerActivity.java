@@ -26,6 +26,7 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.solvetec.derek.tides.data.TidesContract.TidesEntry;
+import com.solvetec.derek.tides.utils.PredictionServiceHelper;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -163,7 +164,7 @@ public class MapPickerActivity extends AppCompatActivity implements
         switch(loader.getId()) {
             case ID_STATIONS_LOADER:
                 if (dataCursor.getCount() != 0) {
-                    mStationsMap = MainActivity.parseStationCursor(dataCursor);
+                    mStationsMap = PredictionServiceHelper.parseStationCursor(dataCursor);
 
                     // Start map here, to ensure data is loaded
                     SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
