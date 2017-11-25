@@ -3,6 +3,7 @@
     package="com.solvetec.derek.tides">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application
         android:allowBackup="true"
@@ -34,9 +35,17 @@
             android:authorities="com.solvetec.derek.tides"
             android:name="com.solvetec.derek.tides.data.TidesContentProvider"
             android:exported="false" />
+
         <service
             android:name=".sync.TidesSyncIntentService"
             android:exported="false" />
+        <service
+            android:name=".sync.TidesSyncFirebaseJobService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.firebase.jobdispatcher.ACTION_EXECUTE"/>
+            </intent-filter>
+        </service>
 
         <meta-data
             android:name="com.google.android.geo.API_KEY"

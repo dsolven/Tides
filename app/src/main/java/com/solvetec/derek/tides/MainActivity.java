@@ -25,6 +25,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.CalendarView;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -37,12 +38,18 @@ import com.Wsdl2Code.WebServices.PredictionsService.SearchParams;
 import com.Wsdl2Code.WebServices.PredictionsService.Station;
 import com.Wsdl2Code.WebServices.PredictionsService.VectorMetadata;
 
+import com.firebase.jobdispatcher.FirebaseJobDispatcher;
+import com.firebase.jobdispatcher.GooglePlayDriver;
+import com.firebase.jobdispatcher.Trigger;
 import com.jjoe64.graphview.GraphView;
 import com.jjoe64.graphview.series.DataPoint;
 import com.jjoe64.graphview.series.LineGraphSeries;
 import com.jjoe64.graphview.series.PointsGraphSeries;
 import com.jjoe64.graphview.series.Series;
 import com.solvetec.derek.tides.data.TidesContract;
+import com.solvetec.derek.tides.sync.SyncUtils;
+import com.solvetec.derek.tides.sync.TidesSyncIntentService;
+import com.solvetec.derek.tides.sync.TidesSyncIntentTask;
 import com.solvetec.derek.tides.utils.DateUtils;
 import com.solvetec.derek.tides.utils.GraphViewUtils;
 import com.solvetec.derek.tides.utils.PredictionServiceHelper;
@@ -69,6 +76,7 @@ public class MainActivity extends AppCompatActivity
     private DayListAdapter mDayListAdapter;
     private RecyclerView mDayListRecyclerView;
     private GraphView mGraphView;
+    private ProgressBar mProgressBarGraph;
     private CalendarView mCalendarView;
     private TextView mTextViewSelectedDay;
     private Cursor mGraphCursor;
@@ -104,11 +112,10 @@ public class MainActivity extends AppCompatActivity
         mSelectedStationId = sharedPreferences.getString(getString(R.string.pref_location_key), getString(R.string.pref_location_default));
         mPrevSelectedStationId = mSelectedStationId;
 
-
-        // TODO: 11/13/2017 I need to separate the "build" parts of the UI from the "populate" parts of the UI. Leave the build in onCreate, move the populate to onResume.
         // Setup the GraphView
         mGraphView = (GraphView) findViewById(R.id.graph_main);
         mTextViewSelectedDay = findViewById(R.id.tv_displayed_date);
+        mProgressBarGraph = findViewById(R.id.pb_graph);
 
         // Setup the calendarView
         mCalendarView = findViewById(R.id.cv_main_calendar);
@@ -122,6 +129,9 @@ public class MainActivity extends AppCompatActivity
 
         // Set selected day to today
         mSelectedDay = DateUtils.getStartOfToday();
+
+        // Schedule the background sync
+        SyncUtils.scheduleBackgroundSync(this);
 
     }
 
@@ -169,20 +179,20 @@ public class MainActivity extends AppCompatActivity
 
 
         // TODO: 10/21/2017 Remove the button, once I have a database and contentProvider to handle the transactions.
-//        Button buttonTestAll = (Button) findViewById(R.id.button_test_all_predictions);
-//        buttonTestAll.setOnClickListener(new View.OnClickListener() {
-//            @Override
-//            public void onClick(View v) {
-//                new PredictionsTestAllAsync().execute();
-//            }
-//        });
+        Button buttonTestAll = (Button) findViewById(R.id.button_test_all);
+        buttonTestAll.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                new PredictionsTestAllAsync().execute();
+            }
+        });
 
         Button buttonTestWl15Search = (Button) findViewById(R.id.button_test_wl15_search_prediction);
         buttonTestWl15Search.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 v.setEnabled(false);
-                SearchParams sp = PredictionServiceHelper.getWl15SearchParams(getApplicationContext());
+                SearchParams sp = PredictionServiceHelper.getWl15SearchParams(getApplicationContext(), DateUtils.getStartOfToday(), 7);
                 new PredictionsSearchAsync().execute(sp);
             }
         });
@@ -259,6 +269,7 @@ public class MainActivity extends AppCompatActivity
         Log.d(TAG, "onCreateLoader: " + id);
         switch (id) {
             case ID_WL15_LOADER:
+                // Query database
                 Uri wl15QueryUri = TidesEntry.WL15_CONTENT_URI;
                 return new CursorLoader(this,
                         wl15QueryUri,
@@ -301,6 +312,10 @@ public class MainActivity extends AppCompatActivity
         switch(loader.getId()) {
             case ID_WL15_LOADER:
                 if (dataCursor.getCount() == NUM_WL15_POINTS_TO_DISPLAY) {
+                    // Update progressbar UI
+                    mProgressBarGraph.setVisibility(View.INVISIBLE);
+
+                    // Load data
                     mGraphCursor = dataCursor;
                     DataPoint[] newTidePoints = GraphViewUtils.getSeries(dataCursor);
                     // TODO: 11/1/2017 This is where I need to verify the timezone and current time. At this point, I've guarenteed that the timezone async has completed.
@@ -383,7 +398,16 @@ public class MainActivity extends AppCompatActivity
                     mTextViewSelectedDay.setText(dateString);
 
                 } else {
+                    // Set UI for possible long data sync
+                    mProgressBarGraph.setVisibility(View.VISIBLE);
+
                     Toast.makeText(this, dataCursor.getCount() + " WL15 points, instead of " + NUM_WL15_POINTS_TO_DISPLAY, Toast.LENGTH_SHORT).show();
+                    Log.d(TAG, "onLoadFinished: Starting sync of single day.");
+
+                    Intent syncSingleDayIntent = new Intent(this, TidesSyncIntentService.class);
+                    syncSingleDayIntent.putExtra(TidesSyncIntentService.EXTRA_LONG_STARTING_DAY, mSelectedDay);
+                    syncSingleDayIntent.putExtra(TidesSyncIntentService.EXTRA_NUM_DAYS_TO_SYNC, 1);
+                    startService(syncSingleDayIntent);
                 }
                 Log.d(TAG, "onLoadFinished: WL15 onLoadFinished complete.");
                 break;
@@ -565,7 +589,6 @@ public class MainActivity extends AppCompatActivity
     }
 
     private void checkFirstRun() {
-        // TODO: 11/5/2017 Currently not using this method, but might be useful in the future.
 
         final String PREF_VERSION_CODE_KEY = "version_code";
         final int DOESNT_EXIST = -1;
@@ -582,7 +605,17 @@ public class MainActivity extends AppCompatActivity
             // This is just a normal run
             return;
         } else if (savedVersionCode == DOESNT_EXIST) {
-            // TODO This is a new install (or the user cleared the shared preferences)
+            // This is a new install (or the user cleared the shared preferences)
+            Toast.makeText(this, "Downloading initial data", Toast.LENGTH_SHORT).show();
+
+            // Download the station information
+            new PredictionsStationInfoAsync().execute();
+
+            // Download the next 10 days, just to have something
+            Intent syncIntent = new Intent(this, TidesSyncIntentService.class);
+            syncIntent.putExtra(TidesSyncIntentService.EXTRA_LONG_STARTING_DAY, DateUtils.getStartOfToday());
+            syncIntent.putExtra(TidesSyncIntentService.EXTRA_NUM_DAYS_TO_SYNC, 10);
+            startService(syncIntent);
 
         } else if (currentVersionCode > savedVersionCode) {
             // TODO This is an upgrade

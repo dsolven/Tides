@@ -12,12 +12,22 @@
         tools:text="Today's date"
         android:layout_gravity="center"/>
 
-    <com.jjoe64.graphview.GraphView
-        android:id="@+id/graph_main"
-        android:layout_height="200dp"
-        android:layout_width="match_parent"
+    <FrameLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content">
 
-        />
+        <com.jjoe64.graphview.GraphView
+            android:id="@+id/graph_main"
+            android:layout_height="200dp"
+            android:layout_width="match_parent"/>
+        <ProgressBar
+            android:id="@+id/pb_graph"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_gravity="center"
+            android:visibility="invisible"
+            />
+    </FrameLayout>
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -37,6 +47,12 @@
         <Button
             android:id="@+id/button_test_metadata_prediction"
             android:text="Station"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            />
+        <Button
+            android:id="@+id/button_test_all"
+            android:text="All"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             />
