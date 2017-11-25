@@ -45,6 +45,12 @@ public class DateUtils {
         return getStartOfDay(cal.getTimeInMillis());
     }
 
+    public static Long getStartOfDayNDaysFromNow(int nDays) {
+        Calendar cal = Calendar.getInstance(); // by default, returns right now
+        cal.add(Calendar.DAY_OF_YEAR, nDays);
+        return getStartOfDay(cal.getTimeInMillis());
+    }
+
     public static Long getFifteenMinutesInMillis() {
         return 15L * 60 * 1000;
     }
@@ -53,6 +59,13 @@ public class DateUtils {
         Calendar cal = Calendar.getInstance(); // by default, returns right now
         cal.setTimeInMillis(currentDay);
         cal.add(Calendar.DAY_OF_YEAR, 1);
+        return getStartOfDay(cal.getTimeInMillis());
+    }
+
+    public static Long getStartOfDayNDaysAfterThis(Long currentDay, int nDays) {
+        Calendar cal = Calendar.getInstance(); // by default, returns right now
+        cal.setTimeInMillis(currentDay);
+        cal.add(Calendar.DAY_OF_YEAR, nDays);
         return getStartOfDay(cal.getTimeInMillis());
     }
 

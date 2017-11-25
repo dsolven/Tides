@@ -76,14 +76,14 @@ public class PredictionServiceHelper {
     }
 
 
-    public static SearchParams getWl15SearchParams(Context context) {
+    public static SearchParams getWl15SearchParams(Context context, Long startingDay, int numDaysToSearch) {
 
         // Get the current station
         Station s = getCurrentStation(context);
 
-        String dateMin = DateUtils.formatForSearchParams(DateUtils.getStartOfToday());
-        String dateMax = DateUtils.formatForSearchParams(DateUtils.getStartOfDayOneWeekFromNow() + DateUtils.getFifteenMinutesInMillis());
-        int sizeMax = WL15_IN_DAY * 7 + 1;
+        String dateMin = DateUtils.formatForSearchParams(DateUtils.getStartOfDay(startingDay));
+        String dateMax = DateUtils.formatForSearchParams(DateUtils.getStartOfDayNDaysAfterThis(startingDay, numDaysToSearch));
+        int sizeMax = WL15_IN_DAY * numDaysToSearch + 1;
         // TODO: 11/2/2017 Right now, this is pulling 1 week worth of data. Change this and maxSize below.
 
         String metadataSelection = "station_id=" + s.station_id;
