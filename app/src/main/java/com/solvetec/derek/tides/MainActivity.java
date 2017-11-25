@@ -170,50 +170,11 @@ public class MainActivity extends AppCompatActivity
         bundle.putStringArray(SELECTION_ARGS_KEY, selectionArgs);
         getSupportLoaderManager().restartLoader(ID_WL15_LOADER, bundle, this);
 
-        // TODO: 10/31/2017 Immediately start a data sync here.
 
         // TODO: 11/15/2017 Connect up the timezone API, to actually get the selected station timezone, and use it in date calculations.
         Station exampleWhiteRockStation = PredictionServiceHelper.makeExampleStation();
         GetTimezoneOffset gto = new GetTimezoneOffset();
         gto.execute(exampleWhiteRockStation);
-
-
-        // TODO: 10/21/2017 Remove the button, once I have a database and contentProvider to handle the transactions.
-        Button buttonTestAll = (Button) findViewById(R.id.button_test_all);
-        buttonTestAll.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                new PredictionsTestAllAsync().execute();
-            }
-        });
-
-        Button buttonTestWl15Search = (Button) findViewById(R.id.button_test_wl15_search_prediction);
-        buttonTestWl15Search.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                v.setEnabled(false);
-                SearchParams sp = PredictionServiceHelper.getWl15SearchParams(getApplicationContext(), DateUtils.getStartOfToday(), 7);
-                new PredictionsSearchAsync().execute(sp);
-            }
-        });
-
-        Button buttonTestHiloSearch = (Button) findViewById(R.id.button_test_hilo_search_prediction);
-        buttonTestHiloSearch.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                SearchParams sp = PredictionServiceHelper.getHILOSearchParams(getApplicationContext());
-                new PredictionsSearchAsync().execute(sp);
-            }
-        });
-
-        Button buttonTestMetadata = (Button) findViewById(R.id.button_test_metadata_prediction);
-        buttonTestMetadata.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                new PredictionsStationInfoAsync().execute();
-            }
-        });
-
 
     }
 
@@ -507,8 +468,6 @@ public class MainActivity extends AppCompatActivity
 
         @Override
         protected void onPostExecute(String[] s) {
-            Button buttonTestWl15Search = (Button) findViewById(R.id.button_test_wl15_search_prediction);
-            buttonTestWl15Search.setEnabled(true);
             Toast.makeText(MainActivity.this, s[0] + " search completed. First entry is: " + s[1], Toast.LENGTH_SHORT).show();
         }
     }

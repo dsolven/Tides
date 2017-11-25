@@ -28,37 +28,6 @@
             android:visibility="invisible"
             />
     </FrameLayout>
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal">
-        <Button
-            android:id="@+id/button_test_wl15_search_prediction"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="WL15" />
-
-        <Button
-            android:id="@+id/button_test_hilo_search_prediction"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Hilo" />
-
-        <Button
-            android:id="@+id/button_test_metadata_prediction"
-            android:text="Station"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            />
-        <Button
-            android:id="@+id/button_test_all"
-            android:text="All"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            />
-    </LinearLayout>
-
-
     <CalendarView
         android:id="@+id/cv_main_calendar"
         android:layout_width="match_parent"
