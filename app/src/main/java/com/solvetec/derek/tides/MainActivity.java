@@ -4,27 +4,27 @@ import android.content.ContentValues;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.database.Cursor;
+import android.graphics.Color;
+import android.graphics.Typeface;
+import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
-import android.preference.PreferenceFragment;
 import android.preference.PreferenceManager;
 import android.support.annotation.NonNull;
 import android.support.v4.app.LoaderManager;
 import android.support.v4.content.CursorLoader;
 import android.support.v4.content.Loader;
 import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.LinearLayoutManager;
-import android.support.v7.widget.RecyclerView;
-import android.support.v7.widget.Toolbar;
+import android.text.style.ForegroundColorSpan;
+import android.text.style.RelativeSizeSpan;
+import android.text.style.StyleSpan;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.Button;
-import android.widget.CalendarView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -38,18 +38,18 @@ import com.Wsdl2Code.WebServices.PredictionsService.SearchParams;
 import com.Wsdl2Code.WebServices.PredictionsService.Station;
 import com.Wsdl2Code.WebServices.PredictionsService.VectorMetadata;
 
-import com.firebase.jobdispatcher.FirebaseJobDispatcher;
-import com.firebase.jobdispatcher.GooglePlayDriver;
-import com.firebase.jobdispatcher.Trigger;
 import com.jjoe64.graphview.GraphView;
 import com.jjoe64.graphview.series.DataPoint;
 import com.jjoe64.graphview.series.LineGraphSeries;
 import com.jjoe64.graphview.series.PointsGraphSeries;
 import com.jjoe64.graphview.series.Series;
+import com.prolificinteractive.materialcalendarview.CalendarDay;
+import com.prolificinteractive.materialcalendarview.DayViewDecorator;
+import com.prolificinteractive.materialcalendarview.DayViewFacade;
+import com.prolificinteractive.materialcalendarview.MaterialCalendarView;
 import com.solvetec.derek.tides.data.TidesContract;
 import com.solvetec.derek.tides.sync.SyncUtils;
 import com.solvetec.derek.tides.sync.TidesSyncIntentService;
-import com.solvetec.derek.tides.sync.TidesSyncIntentTask;
 import com.solvetec.derek.tides.utils.DateUtils;
 import com.solvetec.derek.tides.utils.GraphViewUtils;
 import com.solvetec.derek.tides.utils.PredictionServiceHelper;
@@ -58,7 +58,6 @@ import com.solvetec.derek.tides.data.TidesContract.TidesEntry;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -69,12 +68,13 @@ import java.util.Map;
 
 public class MainActivity extends AppCompatActivity
         implements LoaderManager.LoaderCallbacks,
-        CalendarView.OnDateChangeListener{
+        com.prolificinteractive.materialcalendarview.OnDateSelectedListener{
 
     private static final String TAG = MainActivity.class.getSimpleName();
     private GraphView mGraphView;
     private ProgressBar mProgressBarGraph;
-    private CalendarView mCalendarView;
+    private MaterialCalendarView mCalendarView;
+    private OneDayDecorator mOneDayDecorator;
     private TextView mTextViewSelectedDay;
     private Cursor mGraphCursor;
     public Map<String, Station> mStationsMap;
@@ -114,12 +114,15 @@ public class MainActivity extends AppCompatActivity
         mTextViewSelectedDay = findViewById(R.id.tv_displayed_date);
         mProgressBarGraph = findViewById(R.id.pb_graph);
 
-        // Setup the calendarView
-        mCalendarView = findViewById(R.id.cv_main_calendar);
-        mCalendarView.setOnDateChangeListener(this);
-
         // Set selected day to today
         mSelectedDay = DateUtils.getStartOfToday();
+
+        // Setup the calendarView
+        mCalendarView = findViewById(R.id.cv_main_calendar);
+        mCalendarView.setOnDateChangedListener(this);
+        mCalendarView.setDateSelected(new Date(mSelectedDay), true);
+        mOneDayDecorator = new OneDayDecorator();
+        mCalendarView.addDecorator(mOneDayDecorator);
 
         // Schedule the background sync
         SyncUtils.scheduleBackgroundSync(this);
@@ -140,6 +143,10 @@ public class MainActivity extends AppCompatActivity
             // Station has changed
             mGraphView.removeAllSeries();
         }
+
+        // Redraw the calendar decorators, in case the day changed.
+        mOneDayDecorator.setDate(new Date()); // Set it to the current "today".
+        mCalendarView.invalidateDecorators(); // Redraw all decorators.
 
         // Create loaders
         // Stations Loader
@@ -374,10 +381,14 @@ public class MainActivity extends AppCompatActivity
         }
     }
 
+    /**
+     * MaterialCalendarView callback.
+     * {@inheritDoc}
+     */
     @Override
-    public void onSelectedDayChange(@NonNull CalendarView view, int year, int month, int dayOfMonth) {
+    public void onDateSelected(@NonNull MaterialCalendarView widget, @NonNull CalendarDay date, boolean selected) {
         Calendar cal = Calendar.getInstance();
-        cal.set(year, month, dayOfMonth);
+        cal.setTime(date.getDate());
         mSelectedDay = DateUtils.getStartOfDay(cal.getTimeInMillis());
         Log.d(TAG, "onSelectedDayChange: Selected day:" + DateUtils.getDateString(mSelectedDay, getString(R.string.format_date_date_and_time)));
 
@@ -577,5 +588,35 @@ public class MainActivity extends AppCompatActivity
         getSupportActionBar().setTitle(title);
     }
 
+
+    /**
+     * Decorate a day by making the text big and bold
+     */
+    public class OneDayDecorator implements DayViewDecorator {
+
+        private CalendarDay date;
+
+        public OneDayDecorator() {
+            date = CalendarDay.today();
+        }
+
+        @Override
+        public boolean shouldDecorate(CalendarDay day) {
+            return date != null && day.equals(date);
+        }
+
+        @Override
+        public void decorate(DayViewFacade view) {
+            view.addSpan(new StyleSpan(Typeface.BOLD));
+            view.addSpan(new RelativeSizeSpan(1.4f));
+        }
+
+        /**
+         * We're changing the internals, so make sure to call {@linkplain MaterialCalendarView#invalidateDecorators()}
+         */
+        public void setDate(Date date) {
+            this.date = CalendarDay.from(date);
+        }
+    }
 
 }
