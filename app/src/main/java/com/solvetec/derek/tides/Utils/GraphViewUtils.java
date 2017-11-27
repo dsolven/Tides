@@ -3,6 +3,7 @@ package com.solvetec.derek.tides.utils;
 import android.content.Context;
 import android.database.Cursor;
 import android.graphics.Color;
+import android.util.Log;
 
 import com.jjoe64.graphview.GraphView;
 import com.jjoe64.graphview.GridLabelRenderer;
@@ -12,8 +13,10 @@ import com.jjoe64.graphview.series.DataPoint;
 import com.jjoe64.graphview.series.LineGraphSeries;
 import com.jjoe64.graphview.series.Series;
 import com.solvetec.derek.tides.R;
+import com.solvetec.derek.tides.SunriseSunset;
 import com.solvetec.derek.tides.data.TidesContract;
 
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -22,6 +25,8 @@ import java.util.List;
  */
 
 public class GraphViewUtils {
+
+    private static final String TAG = GraphViewUtils.class.getSimpleName();
 
     public static final int GRAPH_SUNRISE = 0;
     public static final int GRAPH_SUNSET = 1;

@@ -54,6 +54,7 @@ import com.solvetec.derek.tides.utils.DateUtils;
 import com.solvetec.derek.tides.utils.GraphViewUtils;
 import com.solvetec.derek.tides.utils.PredictionServiceHelper;
 import com.solvetec.derek.tides.data.TidesContract.TidesEntry;
+import com.solvetec.derek.tides.utils.SunsetUtils;
 
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -173,6 +174,10 @@ public class MainActivity extends AppCompatActivity
         Station exampleWhiteRockStation = PredictionServiceHelper.makeExampleStation();
         GetTimezoneOffset gto = new GetTimezoneOffset();
         gto.execute(exampleWhiteRockStation);
+
+        // Sunrise and sunset data
+        GetSunriseSunset gss = new GetSunriseSunset();
+        gss.execute();
 
     }
 
@@ -525,6 +530,18 @@ public class MainActivity extends AppCompatActivity
         @Override
         protected void onPostExecute(Long offset) {
             mTimezoneOffset = offset; // Set timezone offset to valid offset
+        }
+    }
+
+    class GetSunriseSunset extends AsyncTask<Void, Void, Void>{
+        @Override
+        protected Void doInBackground(Void... voids) {
+            Log.d(TAG, "doInBackground: getSunriseSunset started.");
+            Station exampleStation = PredictionServiceHelper.makeExampleStation();
+            SunriseSunset result = SunsetUtils.getSunriseSunset(exampleStation.latitude, exampleStation.longitude, mSelectedDay);
+
+            // TODO: 11/26/2017 This now works. Need to integrate and display it.
+            return null;
         }
     }
 
