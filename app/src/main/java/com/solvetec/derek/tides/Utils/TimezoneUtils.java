@@ -19,7 +19,7 @@ import java.util.Scanner;
  */
 public final class TimezoneUtils {
 
-    private static final String TAG = TimezoneUtils.class.getSimpleName();
+    private static final String TAG = TimezoneUtils.class.getCanonicalName();
 
     private static final String GOOGLE_TIMEZONE_URL =
             "https://maps.googleapis.com/maps/api/timezone/json?";

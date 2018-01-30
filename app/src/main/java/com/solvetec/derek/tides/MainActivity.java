@@ -71,7 +71,7 @@ public class MainActivity extends AppCompatActivity
         implements LoaderManager.LoaderCallbacks,
         com.prolificinteractive.materialcalendarview.OnDateSelectedListener{
 
-    private static final String TAG = MainActivity.class.getSimpleName();
+    private static final String TAG = MainActivity.class.getCanonicalName();
     private GraphView mGraphView;
     private ProgressBar mProgressBarGraph;
     private MaterialCalendarView mCalendarView;

@@ -24,7 +24,7 @@ import java.util.Set;
 
 public class DayListAdapter extends RecyclerView.Adapter<DayListAdapter.DayViewHolder> {
 
-    private static final String TAG = DayListAdapter.class.getSimpleName();
+    private static final String TAG = DayListAdapter.class.getCanonicalName();
     private ListItemClickListener mOnClickListener;
     private int mNumberOfItems;
     private List<HiloDay> mHiloDays;

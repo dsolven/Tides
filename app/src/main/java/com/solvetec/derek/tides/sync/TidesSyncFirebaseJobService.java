@@ -15,7 +15,7 @@ import static com.solvetec.derek.tides.sync.TidesSyncIntentTask.syncTides;
 
 public class TidesSyncFirebaseJobService extends JobService {
 
-    private static final String TAG = TidesSyncFirebaseJobService.class.getSimpleName();
+    private static final String TAG = TidesSyncFirebaseJobService.class.getCanonicalName();
     private static final int NUM_DAYS_TO_SYNC = 10;
     boolean isWorking = false;
     boolean jobCancelled = false;

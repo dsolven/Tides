@@ -17,7 +17,7 @@ import com.solvetec.derek.tides.data.TidesContract.TidesEntry;
 
 public class TidesSyncIntentTask {
 
-    private static final String TAG = TidesSyncIntentTask.class.getSimpleName();
+    private static final String TAG = TidesSyncIntentTask.class.getCanonicalName();
     private static final int MIN_RESULTS = 97; // 4 per hour * 24 hours + 1 endpoint. We only search for full days.
     private static final int MAX_RESULTS = 961; // 4 per hour * 24 hours * 10 days + 1 endpoint. Max per search = 1000 from webserver.
 

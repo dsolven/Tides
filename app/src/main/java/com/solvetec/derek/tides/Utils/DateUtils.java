@@ -16,7 +16,7 @@ import java.util.TimeZone;
 
 public class DateUtils {
 
-    private static final String TAG = DateUtils.class.getSimpleName();
+    private static final String TAG = DateUtils.class.getCanonicalName();
 
     public static long getRightNow() {
         Date now = new Date();

@@ -26,7 +26,7 @@ import java.util.List;
 
 public class GraphViewUtils {
 
-    private static final String TAG = GraphViewUtils.class.getSimpleName();
+    private static final String TAG = GraphViewUtils.class.getCanonicalName();
 
     public static final int GRAPH_SUNRISE = 0;
     public static final int GRAPH_SUNSET = 1;

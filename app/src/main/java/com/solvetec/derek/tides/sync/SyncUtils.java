@@ -24,7 +24,7 @@ public class SyncUtils {
     private static final int SYNC_INTERVAL_SECONDS = (int) (TimeUnit.HOURS.toSeconds(SYNC_INTERVAL_HOURS));
     private static final int SYNC_FLEXTIME_SECONDS = SYNC_INTERVAL_SECONDS;
 
-    private static final String TAG = SyncUtils.class.getSimpleName();
+    private static final String TAG = SyncUtils.class.getCanonicalName();
     private static final String SYNC_JOB_TAG = "sync_job_tag";
 
     private static boolean sInitialized;
@@ -32,7 +32,10 @@ public class SyncUtils {
     synchronized public static void scheduleBackgroundSync(@NonNull final Context context) {
 
         // If the job has already been initialized, return
-        if (sInitialized) return;
+        if (sInitialized) {
+            Log.d(TAG, "scheduleBackgroundSync: Job already scheduled. Doing nothing.");
+            return;
+        }
 
         Driver driver = new GooglePlayDriver(context);
         FirebaseJobDispatcher dispatcher = new FirebaseJobDispatcher(driver);

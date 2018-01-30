@@ -21,7 +21,7 @@ import java.util.Scanner;
 
 public class SunsetUtils {
 
-    private static final String TAG = SunsetUtils.class.getSimpleName();
+    private static final String TAG = SunsetUtils.class.getCanonicalName();
 
     private static final String SUNRISE_SUNSET_ORG_URL =
             "https://api.sunrise-sunset.org/json?";
