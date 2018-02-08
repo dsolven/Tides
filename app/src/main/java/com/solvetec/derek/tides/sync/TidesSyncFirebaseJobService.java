@@ -43,6 +43,7 @@ public class TidesSyncFirebaseJobService extends JobService {
         Context context = getApplicationContext();
 
         // Sync the next N days from today
+        Log.d(TAG, "doWork: Starting sync of " + NUM_DAYS_TO_SYNC + " days from server.");
         syncTides(context, DateUtils.getStartOfToday(), NUM_DAYS_TO_SYNC);
 
         Log.d(TAG, "doWork: Job finished!");

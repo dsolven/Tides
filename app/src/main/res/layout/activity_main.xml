@@ -44,6 +44,16 @@
             android:layout_height="40dp"
             android:layout_gravity="center"
             android:visibility="invisible" />
+
+        <ImageView
+            android:id="@+id/iv_sync_error"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_gravity="center"
+            android:visibility="invisible"
+            android:src="@drawable/ic_sync_problem_black_48dp"
+            android:contentDescription="@string/content_description_sync_error_imageview"
+            />
     </FrameLayout>
 
     <com.prolificinteractive.materialcalendarview.MaterialCalendarView

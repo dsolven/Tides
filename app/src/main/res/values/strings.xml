@@ -8,8 +8,18 @@
     <string name="pref_location_title">Location</string>
     <string name="pref_location_default">07577</string>
 
-    <!--<string name="pref_map_key">map</string>-->
-    <!--<string name="pref_map_title">Select Location</string>-->
+    <string name="pref_show_sunrise_key">show_sunrise</string>
+    <string name="pref_show_sunrise_title">Show Sunrise/Sunset</string>
+    <!--<string name="pref_show_runrise_default">false</string>--> // Value stored in bools.xml
+    <string name="pref_show_sunrise_summary_off">Not showing sunrise &amp; sunset</string>
+    <string name="pref_show_sunrise_summary_on">Showing sunrise &amp; sunset</string>
+
+    <string name="pref_wifi_only_key">wifi_only</string>
+    <string name="pref_wifi_only_title">Wifi Only</string>
+    <!--default value stored in bools.xml-->
+    <string name="pref_wifi_only_summary_off">Mobile data usage is allowed</string>
+    <string name="pref_wifi_only_summary_on">Only wifi data usage is allowed</string>
+
 
     <!--Menu item labels-->
     <string name="action_settings">Settings</string>
@@ -28,5 +38,6 @@
 
     <!--Error codes-->
     <string name="prediction_error_network" translatable="true">Network error. Unable to retrieve tide data from webservice.</string>
+    <string name="content_description_sync_error_imageview">SyncError</string>
 
 </resources>

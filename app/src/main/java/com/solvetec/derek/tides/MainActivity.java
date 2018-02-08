@@ -4,9 +4,7 @@ import android.content.ContentValues;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.database.Cursor;
-import android.graphics.Color;
 import android.graphics.Typeface;
-import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
@@ -17,7 +15,6 @@ import android.support.v4.app.LoaderManager;
 import android.support.v4.content.CursorLoader;
 import android.support.v4.content.Loader;
 import android.support.v7.app.AppCompatActivity;
-import android.text.style.ForegroundColorSpan;
 import android.text.style.RelativeSizeSpan;
 import android.text.style.StyleSpan;
 import android.util.Log;
@@ -25,6 +22,7 @@ import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -50,16 +48,15 @@ import com.prolificinteractive.materialcalendarview.MaterialCalendarView;
 import com.solvetec.derek.tides.data.TidesContract;
 import com.solvetec.derek.tides.sync.SyncUtils;
 import com.solvetec.derek.tides.sync.TidesSyncIntentService;
+import com.solvetec.derek.tides.utils.ConnectivityUtils;
 import com.solvetec.derek.tides.utils.DateUtils;
 import com.solvetec.derek.tides.utils.GraphViewUtils;
 import com.solvetec.derek.tides.utils.PredictionServiceHelper;
 import com.solvetec.derek.tides.data.TidesContract.TidesEntry;
 import com.solvetec.derek.tides.utils.SunsetUtils;
 
-import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -72,8 +69,10 @@ public class MainActivity extends AppCompatActivity
         com.prolificinteractive.materialcalendarview.OnDateSelectedListener{
 
     private static final String TAG = MainActivity.class.getCanonicalName();
+    private Toast mProductionToast;
     private GraphView mGraphView;
     private ProgressBar mProgressBarGraph;
+    private ImageView mSyncErrorImageView;
     private MaterialCalendarView mCalendarView;
     private OneDayDecorator mOneDayDecorator;
     private TextView mTextViewSelectedDay;
@@ -110,10 +109,14 @@ public class MainActivity extends AppCompatActivity
         mSelectedStationId = sharedPreferences.getString(getString(R.string.pref_location_key), getString(R.string.pref_location_default));
         mPrevSelectedStationId = mSelectedStationId;
 
+        // Setup the Toast objects
+        mProductionToast = new Toast(this);
+
         // Setup the GraphView
         mGraphView = (GraphView) findViewById(R.id.graph_main);
         mTextViewSelectedDay = findViewById(R.id.tv_displayed_date);
         mProgressBarGraph = findViewById(R.id.pb_graph);
+        mSyncErrorImageView = findViewById(R.id.iv_sync_error);
 
         // Set selected day to today
         mSelectedDay = DateUtils.getStartOfToday();
@@ -254,11 +257,17 @@ public class MainActivity extends AppCompatActivity
         Cursor dataCursor = (Cursor) data;
         Log.d(TAG, "onLoadFinished: " + loader.getId() + ". Cursor size: " + dataCursor.getCount());
 
+        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(this);
+
         switch(loader.getId()) {
             case ID_WL15_LOADER:
                 if (dataCursor.getCount() == NUM_WL15_POINTS_TO_DISPLAY) {
-                    // Update progressbar UI
+                    // Update progressbar UI and sync error UI
                     mProgressBarGraph.setVisibility(View.INVISIBLE);
+                    mSyncErrorImageView.setVisibility(View.INVISIBLE);
+
+                    // Load preferences
+                    Boolean prefShowSunrise = sp.getBoolean(getString(R.string.pref_show_sunrise_key), false);
 
                     // Load data
                     mGraphCursor = dataCursor;
@@ -277,22 +286,30 @@ public class MainActivity extends AppCompatActivity
                         // First time
                         LineGraphSeries<DataPoint> newTideSeries = new LineGraphSeries<>(newTidePoints);
 
-                        // Add sunrise/sunset
-                        // TODO: 11/22/2017 Have to do separate async task to get current sunrise/sunset. So, this needs to be in separate function that gets called by both.
-                        DataPoint start = new DataPoint(newTidePoints[0].getX(), newTideSeries.getHighestValueY() * 2);
-                        DataPoint end = new DataPoint(newTidePoints[newTidePoints.length-1].getX(), newTideSeries.getHighestValueY() * 2);
-                        DataPoint testSunrise = new DataPoint(newTidePoints[20].getX(), newTideSeries.getHighestValueY() * 2);
-                        DataPoint testSunrise2 = new DataPoint(newTidePoints[21].getX(), newTideSeries.getHighestValueY() * 2);
-                        DataPoint testSunset = new DataPoint(newTidePoints[70].getX(), newTideSeries.getHighestValueY() * 2);
-                        DataPoint testSunset2 = new DataPoint(newTidePoints[71].getX(), newTideSeries.getHighestValueY() * 2);
+                        if(prefShowSunrise) {
+                            // Add sunrise/sunset
+                            // TODO: 11/22/2017 Have to do separate async task to get current sunrise/sunset. So, this needs to be in separate function that gets called by both.
+                            DataPoint start = new DataPoint(newTidePoints[0].getX(), newTideSeries.getHighestValueY() * 2);
+                            DataPoint end = new DataPoint(newTidePoints[newTidePoints.length - 1].getX(), newTideSeries.getHighestValueY() * 2);
+                            DataPoint testSunrise = new DataPoint(newTidePoints[20].getX(), newTideSeries.getHighestValueY() * 2);
+                            DataPoint testSunrise2 = new DataPoint(newTidePoints[21].getX(), newTideSeries.getHighestValueY() * 2);
+                            DataPoint testSunset = new DataPoint(newTidePoints[70].getX(), newTideSeries.getHighestValueY() * 2);
+                            DataPoint testSunset2 = new DataPoint(newTidePoints[71].getX(), newTideSeries.getHighestValueY() * 2);
 //                        DataPoint[] sunriseDPs = {start, testSunrise};
-                        DataPoint[] sunriseDPs = {testSunrise, testSunrise2};
+                            DataPoint[] sunriseDPs = {testSunrise, testSunrise2};
 //                        DataPoint[] sunsetDPs = {testSunset, end};
-                        DataPoint[] sunsetDPs = {testSunset, testSunset2};
-                        LineGraphSeries<DataPoint> sunriseSeries = new LineGraphSeries<>(sunriseDPs);
-                        LineGraphSeries<DataPoint> sunsetSeries = new LineGraphSeries<>(sunsetDPs);
-                        mGraphView.addSeries(sunriseSeries); //GRAPH_SUNRISE
-                        mGraphView.addSeries(sunsetSeries); //GRAPH_SUNSET
+                            DataPoint[] sunsetDPs = {testSunset, testSunset2};
+                            LineGraphSeries<DataPoint> sunriseSeries = new LineGraphSeries<>(sunriseDPs);
+                            LineGraphSeries<DataPoint> sunsetSeries = new LineGraphSeries<>(sunsetDPs);
+                            mGraphView.addSeries(sunriseSeries); //GRAPH_SUNRISE
+                            mGraphView.addSeries(sunsetSeries); //GRAPH_SUNSET
+                        } else {
+                            // Add empty series, to keep seriesList array offset consistent
+                            LineGraphSeries<DataPoint> sunriseSeries = new LineGraphSeries<>();
+                            LineGraphSeries<DataPoint> sunsetSeries = new LineGraphSeries<>();
+                            mGraphView.addSeries(sunriseSeries); //GRAPH_SUNRISE
+                            mGraphView.addSeries(sunsetSeries); //GRAPH_SUNSET
+                        }
 
                         // Tide data
                         mGraphView.addSeries(newTideSeries); //GRAPH_TIDE
@@ -313,7 +330,10 @@ public class MainActivity extends AppCompatActivity
 
 
 
-                        GraphViewUtils.formatSeriesColor(mGraphView);
+                        GraphViewUtils.formatSeriesColorTide(mGraphView);
+                        if(prefShowSunrise){
+                            GraphViewUtils.formatSeriesColorSunrise(mGraphView);
+                        }
                         GraphViewUtils.formatGraphBounds(mGraphView);
 
 
@@ -332,8 +352,10 @@ public class MainActivity extends AppCompatActivity
                             series2.resetData(currentTimeDataPoint);
                         }
 
-                        // Update sunrise / sunset
-                        // TODO: 11/22/2017 Make sunrise/sunset change per day
+                        if(prefShowSunrise) {
+                            // Update sunrise / sunset
+                            // TODO: 11/22/2017 Make sunrise/sunset change per day
+                        }
                     }
 
                     // Set non-graph texts
@@ -343,16 +365,47 @@ public class MainActivity extends AppCompatActivity
                     mTextViewSelectedDay.setText(dateString);
 
                 } else {
-                    // Set UI for possible long data sync
-                    mProgressBarGraph.setVisibility(View.VISIBLE);
+                    // Need to get data from the server. If allowed, go get it.
 
-                    Toast.makeText(this, dataCursor.getCount() + " WL15 points, instead of " + NUM_WL15_POINTS_TO_DISPLAY, Toast.LENGTH_SHORT).show();
-                    Log.d(TAG, "onLoadFinished: Starting sync of single day.");
+                    boolean isConnected = ConnectivityUtils.isNetworkConnected(this); // Check for network connectivity. If not connected, don't bother with trying to sync.
+                    boolean prefWifiOnly = sp.getBoolean(getString(R.string.pref_wifi_only_key), false); // Check is user has requested WifiOnly.
+                    boolean isMetered = ConnectivityUtils.isActiveNetworkMetered(this);
 
-                    Intent syncSingleDayIntent = new Intent(this, TidesSyncIntentService.class);
-                    syncSingleDayIntent.putExtra(TidesSyncIntentService.EXTRA_LONG_STARTING_DAY, mSelectedDay);
-                    syncSingleDayIntent.putExtra(TidesSyncIntentService.EXTRA_NUM_DAYS_TO_SYNC, 1);
-                    startService(syncSingleDayIntent);
+                    if (!isConnected) {
+                        // Set UI for unable to sync
+                        mSyncErrorImageView.setVisibility(View.VISIBLE);
+                        if(mProductionToast != null) {
+                            mProductionToast.cancel();
+                        }
+                        mProductionToast = Toast.makeText(this, "Unable to sync data. Please connect to a data network.", Toast.LENGTH_SHORT);
+                        mProductionToast.show();
+
+                        Log.d(TAG, "syncTides: Network connection not found. Don't attempt sync.");
+                        return;
+                    } else if( prefWifiOnly && isMetered) {
+                        // Set UI for unable to sync
+                        mSyncErrorImageView.setVisibility(View.VISIBLE);
+                        if(mProductionToast != null) {
+                            mProductionToast.cancel();
+                        }
+                        mProductionToast = Toast.makeText(this, "Unable to sync data. Please connect to a Wifi network, or disable the \"Wifi Only\" option in Settings.", Toast.LENGTH_SHORT);
+                        mProductionToast.show();
+
+                        Log.d(TAG, "syncTides: Unmetered network found, and user requested wifi only. Don't attempt sync.");
+                        return;
+                    } else {
+                        // Set UI for possible long data sync
+                        mProgressBarGraph.setVisibility(View.VISIBLE);
+
+                        //Toast.makeText(this, dataCursor.getCount() + " WL15 points, instead of " + NUM_WL15_POINTS_TO_DISPLAY, Toast.LENGTH_SHORT).show();
+                        Log.d(TAG, "onLoadFinished: Cursor contains " + dataCursor.getCount() + " WL15 points, instead of " + NUM_WL15_POINTS_TO_DISPLAY);
+                        Log.d(TAG, "onLoadFinished: Starting sync of single day.");
+
+                        Intent syncSingleDayIntent = new Intent(this, TidesSyncIntentService.class);
+                        syncSingleDayIntent.putExtra(TidesSyncIntentService.EXTRA_LONG_STARTING_DAY, mSelectedDay);
+                        syncSingleDayIntent.putExtra(TidesSyncIntentService.EXTRA_NUM_DAYS_TO_SYNC, 1);
+                        startService(syncSingleDayIntent);
+                    }
                 }
                 Log.d(TAG, "onLoadFinished: WL15 onLoadFinished complete.");
                 break;
@@ -574,6 +627,10 @@ public class MainActivity extends AppCompatActivity
             syncIntent.putExtra(TidesSyncIntentService.EXTRA_NUM_DAYS_TO_SYNC, 10);
             startService(syncIntent);
 
+            // Setup the shared pref for storing location
+            // Note: This is not done in pref_general, because I don't want a UI for it. It's a hidden setting.
+            prefs.edit().putString(getString(R.string.pref_location_key), getString(R.string.pref_location_default)).apply();
+
         } else if (currentVersionCode > savedVersionCode) {
             // TODO This is an upgrade
 
@@ -635,5 +692,4 @@ public class MainActivity extends AppCompatActivity
             this.date = CalendarDay.from(date);
         }
     }
-
 }

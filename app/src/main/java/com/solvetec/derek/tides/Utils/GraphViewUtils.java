@@ -84,7 +84,7 @@ public class GraphViewUtils {
         });
     }
 
-    public static void formatSeriesColor(GraphView graphView) {
+    public static void formatSeriesColorTide(GraphView graphView) {
         Context context = graphView.getContext();
 
         List<Series> seriesList = graphView.getSeries();
@@ -96,6 +96,13 @@ public class GraphViewUtils {
         backgroundColor = backgroundColor & backgroundColorOpacityMask; // Set opacity
         series.setBackgroundColor(backgroundColor);
         series.setDrawBackground(true);
+
+    }
+
+    public static void formatSeriesColorSunrise(GraphView graphView) {
+        Context context = graphView.getContext();
+
+        List<Series> seriesList = graphView.getSeries();
 
         // Sunrise and sunset
         int sunsetColor = context.getResources().getColor(R.color.colorGraphSunsetBackground);

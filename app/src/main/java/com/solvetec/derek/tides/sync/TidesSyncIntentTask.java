@@ -8,6 +8,7 @@ import com.Wsdl2Code.WebServices.PredictionsService.PredictionsService;
 import com.Wsdl2Code.WebServices.PredictionsService.ResultSet;
 import com.Wsdl2Code.WebServices.PredictionsService.SearchParams;
 import com.solvetec.derek.tides.MainActivity;
+import com.solvetec.derek.tides.utils.ConnectivityUtils;
 import com.solvetec.derek.tides.utils.PredictionServiceHelper;
 import com.solvetec.derek.tides.data.TidesContract.TidesEntry;
 

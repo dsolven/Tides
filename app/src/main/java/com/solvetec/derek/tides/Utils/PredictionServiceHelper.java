@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.preference.PreferenceManager;
+import android.util.Log;
 
 import com.Wsdl2Code.WebServices.PredictionsService.Data;
 import com.Wsdl2Code.WebServices.PredictionsService.Metadata;
@@ -16,6 +17,7 @@ import com.solvetec.derek.tides.HiloDay;
 import com.solvetec.derek.tides.R;
 import com.solvetec.derek.tides.data.TidesContract;
 import com.solvetec.derek.tides.data.TidesContract.TidesEntry;
+import com.solvetec.derek.tides.sync.SyncUtils;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -33,7 +35,7 @@ import java.util.regex.Pattern;
  */
 
 public class PredictionServiceHelper {
-
+    private static final String TAG = PredictionServiceHelper.class.getCanonicalName();
     public static final int WL15_IN_DAY = 4 * 24; // 4 per hour * 24 hours per day
     public static final String SEARCH_DATE_FORMAT = "yyyy-MM-dd HH:mm:ss";
 
@@ -90,8 +92,6 @@ public class PredictionServiceHelper {
         String dateMin = DateUtils.formatForSearchParams(DateUtils.getStartOfDay(startingDay));
         String dateMax = DateUtils.formatForSearchParams(DateUtils.getStartOfDayNDaysAfterThis(startingDay, numDaysToSearch));
         int sizeMax = WL15_IN_DAY * numDaysToSearch + 1;
-        // TODO: 11/2/2017 Right now, this is pulling 1 week worth of data. Change this and maxSize below.
-
         String metadataSelection = "station_id=" + s.station_id;
 
         return new SearchParams(
@@ -157,12 +157,13 @@ public class PredictionServiceHelper {
             String stationName = resCursor.getString(resCursor.getColumnIndex(TidesContract.TidesEntry.COLUMN_STATION_NAME));
             Double stationLat = resCursor.getDouble(resCursor.getColumnIndex(TidesContract.TidesEntry.COLUMN_STATION_LAT));
             Double stationLon = resCursor.getDouble(resCursor.getColumnIndex(TidesContract.TidesEntry.COLUMN_STATION_LON));
+            Log.d(TAG, "getCurrentStation: Current station is " + stationName);
 
             resCursor.close();
             return new Station(stationId, stationName, stationLat, stationLon);
         } else {
+            Log.d(TAG, "getCurrentStation: Getting current station failed. Returning example station instead");
             return makeExampleStation();
-            // TODO: 11/2/2017 This is a hack. For some unknown reason, this db query is returning an empty cursor right now.
         }
 
 

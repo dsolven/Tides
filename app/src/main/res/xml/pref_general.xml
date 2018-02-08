@@ -1,12 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <EditTextPreference
-        android:key="@string/pref_location_key"
-        android:defaultValue="@string/pref_location_default"
-        android:title="@string/pref_location_title" />
+    <CheckBoxPreference
+        android:key="@string/pref_wifi_only_key"
+        android:title="@string/pref_wifi_only_title"
+        android:defaultValue="@bool/pref_wifi_only_default"
+        android:summaryOff="@string/pref_wifi_only_summary_off"
+        android:summaryOn="@string/pref_wifi_only_summary_on"
+        />
+
+    <CheckBoxPreference
+        android:key="@string/pref_show_sunrise_key"
+        android:title="@string/pref_show_sunrise_title"
+        android:defaultValue="@bool/pref_show_sunrise_default"
+        android:summaryOff="@string/pref_show_sunrise_summary_off"
+        android:summaryOn="@string/pref_show_sunrise_summary_on"
+        android:enabled="false"
+        />
 
 
 </PreferenceScreen>
