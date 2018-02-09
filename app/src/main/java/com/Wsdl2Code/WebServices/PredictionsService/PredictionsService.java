@@ -993,12 +993,12 @@ public class PredictionsService {
         try {
             if (headers != null) {
                 httpTransport.call(NAMESPACE + "/search", soapEnvelope, headers);
-                Log.d("dump Request: ", httpTransport.requestDump);
-                Log.d("dump response: ", httpTransport.responseDump);
+                Log.v("dump Request: ", httpTransport.requestDump);
+                Log.v("dump response: ", httpTransport.responseDump);
             } else {
                 httpTransport.call(NAMESPACE + "/search", soapEnvelope);
-                Log.d("dump Request: ", httpTransport.requestDump);
-                Log.d("dump response: ", httpTransport.responseDump);
+                Log.v("dump Request: ", httpTransport.requestDump);
+                Log.v("dump response: ", httpTransport.responseDump);
             }
             Object retObj = soapEnvelope.bodyIn;
             if (retObj instanceof SoapFault) {
