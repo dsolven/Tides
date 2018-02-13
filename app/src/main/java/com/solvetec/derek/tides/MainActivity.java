@@ -59,6 +59,7 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.TimeZone;
 
 
 // TODO: 10/31/2017 Google API: Remember to restrict the API to this app only.
@@ -85,7 +86,7 @@ public class MainActivity extends AppCompatActivity
     private String mSelectedStationId;
     private String mPrevSelectedStationId;
 
-    private Long mTimezoneOffset;
+    private TimeZone mSelectedStationTimezone;
 
     private static final int ID_WL15_LOADER = 44;
     private static final int ID_HILO_LOADER = 45;
@@ -173,7 +174,6 @@ public class MainActivity extends AppCompatActivity
         getSupportLoaderManager().restartLoader(ID_WL15_LOADER, bundle, this);
 
 
-        // TODO: 11/15/2017 Connect up the timezone API, to actually get the selected station timezone, and use it in date calculations.
         Station exampleWhiteRockStation = PredictionServiceHelper.makeExampleStation();
         GetTimezoneOffset gto = new GetTimezoneOffset();
         gto.execute(exampleWhiteRockStation);
@@ -243,7 +243,8 @@ public class MainActivity extends AppCompatActivity
                                 TidesEntry.COLUMN_STATION_ID,
                                 TidesEntry.COLUMN_STATION_NAME,
                                 TidesEntry.COLUMN_STATION_LON,
-                                TidesEntry.COLUMN_STATION_LAT },
+                                TidesEntry.COLUMN_STATION_LAT,
+                                TidesEntry.COLUMN_STATION_TIMEZONE_ID},
                         null,
                         null,
                         TidesEntry.COLUMN_STATION_ID + " ASC");
@@ -419,6 +420,8 @@ public class MainActivity extends AppCompatActivity
                 if (dataCursor.getCount() != 0) {
                     mStationsMap = PredictionServiceHelper.parseStationCursor(dataCursor);
                     setupTitleBar(mStationsMap);
+                } else {
+                    Log.d(TAG, "onLoadFinished: ID_STATIONS_LOADER: Datacursor empty.");
                 }
                 Log.d(TAG, "onLoadFinished: STATIONS onLoadFinished complete.");
                 break;
@@ -566,23 +569,29 @@ public class MainActivity extends AppCompatActivity
         }
     }
 
-    class GetTimezoneOffset extends AsyncTask<Station, Void, Long> {
+    class GetTimezoneOffset extends AsyncTask<Station, Void, TimeZone> {
         @Override
         protected void onPreExecute() {
-            mTimezoneOffset = null; // Reset timezone offset
+            mSelectedStationTimezone = null; // Reset timezone offset
         }
 
         @Override
-        protected Long doInBackground(Station... params) {
+        protected TimeZone doInBackground(Station... params) {
             Station s = params[0];
             Long currentTimestamp = DateUtils.getRightNow();
-            Long timezoneOffset = DateUtils.getTimezoneOffset(s.latitude, s.longitude, currentTimestamp);
-            return timezoneOffset;
+            TimeZone tz = DateUtils.getTimezoneOffset(s.latitude, s.longitude, currentTimestamp);
+            return tz;
         }
 
         @Override
-        protected void onPostExecute(Long offset) {
-            mTimezoneOffset = offset; // Set timezone offset to valid offset
+        protected void onPostExecute(TimeZone tz) {
+            mSelectedStationTimezone = tz; // Set timezone offset to valid offset
+            Log.d(TAG, "onPostExecute: Timezone = " + mSelectedStationTimezone);
+            ContentValues cv = new ContentValues(1);
+            cv.put(TidesEntry.COLUMN_STATION_TIMEZONE_ID, mSelectedStationTimezone.getID());
+            String where = "(" + TidesEntry.COLUMN_STATION_ID + " = ? )";
+            String[] selectionArgs = {mSelectedStationId};
+            getContentResolver().update(TidesEntry.STATION_INFO_CONTENT_URI, cv, where, selectionArgs);
         }
     }
 
@@ -653,6 +662,7 @@ public class MainActivity extends AppCompatActivity
 
     private void setupTitleBar(Map<String, Station> stationMap) {
         // Get info from preferred station
+        // TODO: 2/12/2018 This is a stupid way of dealing with the data. I'm returning all of it from the database, then parsing it. I should be creating a query on the database itself (one for the full table (map view), and a single entry for the station name).
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(this);
         String preferredLocationString = sp.getString(getString(R.string.pref_location_key), getString(R.string.pref_location_default));
 

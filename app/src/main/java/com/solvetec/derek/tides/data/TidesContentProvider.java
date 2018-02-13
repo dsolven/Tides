@@ -204,7 +204,27 @@ public class TidesContentProvider extends ContentProvider {
 
     @Override
     public int update(@NonNull Uri uri, @Nullable ContentValues values, @Nullable String selection, @Nullable String[] selectionArgs) {
-        throw new UnsupportedOperationException("update command not implemented.");
+        final SQLiteDatabase db = mTidesDbHelper.getWritableDatabase();
+
+        int match = sUriMatcher.match(uri);
+        int rowsAffected;
+
+        switch (match) {
+            case WL15:
+                throw new UnsupportedOperationException("update command for WL15 not implemented.");
+            case HILO:
+                throw new UnsupportedOperationException("update command for HILO not implemented.");
+            case STATION_INFO:
+                rowsAffected = db.update(TidesContract.TidesEntry.TABLE_STATION_INFO, values, selection, selectionArgs);
+                break;
+            default:
+                throw new UnsupportedOperationException("Unknown uri: " + uri);
+        }
+
+        // Notify the resolver that the uri has changed
+        getContext().getContentResolver().notifyChange(uri, null);
+
+        return rowsAffected;
     }
 
     @Override

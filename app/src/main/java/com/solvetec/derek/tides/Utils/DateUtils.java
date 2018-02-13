@@ -83,14 +83,14 @@ public class DateUtils {
         return cal.getTimeInMillis();
     }
 
-    public static Long getTimezoneOffset(Double lat, Double lon, Long timestamp) {
+    public static TimeZone getTimezoneOffset(Double lat, Double lon, Long timestamp) {
 
         Long timestamp_in_sec = timestamp / 1000;
         URL url = TimezoneUtils.buildTimezoneUrl(lat, lon, timestamp_in_sec);
 
         try {
             String response = TimezoneUtils.getResponseFromHttpUrl(url);
-            Log.d(TAG, "getTimezone: " + response);
+            Log.v(TAG, "getTimezone: " + response);
             return TimezoneUtils.parseTimezoneResponse(response);
         } catch (Exception e) {
             e.printStackTrace();

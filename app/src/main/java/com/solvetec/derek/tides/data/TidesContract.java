@@ -43,6 +43,8 @@ public class TidesContract {
         public static final String COLUMN_STATION_LON = "station_longitude";
         public static final String COLUMN_STATION_LAT = "station_latitude";
         public static final String COLUMN_STATION_NAME = "station_name";
+        public static final String COLUMN_STATION_TIMEZONE_ID = "station_timezone_id";
+
 
 
         // Content Uri = base content Uri + path

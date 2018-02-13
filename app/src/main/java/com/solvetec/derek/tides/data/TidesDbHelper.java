@@ -14,7 +14,7 @@ public class TidesDbHelper extends SQLiteOpenHelper {
 
     private static final String DATABASE_NAME = "tidesDb.db";
 
-    private static final int DATABASE_VERSION = 4;
+    private static final int DATABASE_VERSION = 5;
 
     public TidesDbHelper(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
@@ -41,9 +41,8 @@ public class TidesDbHelper extends SQLiteOpenHelper {
             TidesEntry.COLUMN_STATION_NAME + " TEXT NOT NULL, " +
             TidesEntry.COLUMN_STATION_LON + " REAL NOT NULL, " +
             TidesEntry.COLUMN_STATION_LAT + " REAL NOT NULL, " +
+            TidesEntry.COLUMN_STATION_TIMEZONE_ID + " TEXT, " +
             " UNIQUE (" + TidesEntry.COLUMN_STATION_ID + ") ON CONFLICT REPLACE);";
-    // TODO: 10/25/2017 Should never have a conflict. If so, I guess replace?
-    // TODO: 10/25/2017 Should station_id be the primary key? There should only be a single entry, so maybe.
     // TODO: 10/25/2017 I have made a relational database now. Need to figure out how to actually link the tables... Probably done in ContentProvider?
 
 

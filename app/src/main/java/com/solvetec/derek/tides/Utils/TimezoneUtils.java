@@ -13,6 +13,7 @@ import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Scanner;
+import java.util.TimeZone;
 
 /**
  * These utilities will be used to communicate with the timezone servers.
@@ -53,7 +54,7 @@ public final class TimezoneUtils {
     private static final String TZ_TIMEZONENAME = "timeZoneName";
 
 
-    public static Long parseTimezoneResponse(String response)
+    public static TimeZone parseTimezoneResponse(String response)
             throws JSONException {
 
         JSONObject timezoneJson = new JSONObject(response);
@@ -63,7 +64,8 @@ public final class TimezoneUtils {
             String status = timezoneJson.getString(TZ_STATUS);
             if (status.equals("OK")) {
                 Long offset = timezoneJson.getLong(TZ_DSTOFFSET) + timezoneJson.getLong(TZ_RAWOFFSET);
-                return offset;
+                String timeZoneId = timezoneJson.getString(TZ_TIMEZONEID);
+                return TimeZone.getTimeZone(timeZoneId);
             } else {
                 // TODO: 11/1/2017 How to handle status != OK?
             }
@@ -72,10 +74,6 @@ public final class TimezoneUtils {
         }
 
         return null;
-    }
-
-    public class Timezone {
-        // TODO: 11/1/2017 Keep the timeZoneName around too, to show in the
     }
 
     /**
