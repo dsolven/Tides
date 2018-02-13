@@ -178,9 +178,14 @@ public class MainActivity extends AppCompatActivity
         GetTimezoneOffset gto = new GetTimezoneOffset();
         gto.execute(exampleWhiteRockStation);
 
+
+
         // Sunrise and sunset data
-        GetSunriseSunset gss = new GetSunriseSunset();
-        gss.execute();
+        // TODO: 2/8/2018 Add sunrise and sunset data
+        if(sharedPreferences.getBoolean(getString(R.string.pref_show_sunrise_key), false)) {
+            GetSunriseSunset gss = new GetSunriseSunset();
+            gss.execute();
+        }
 
     }
 
@@ -622,18 +627,20 @@ public class MainActivity extends AppCompatActivity
         // Check for first run or upgrade
         if (currentVersionCode == savedVersionCode) {
             // This is just a normal run
+            Log.d(TAG, "checkFirstRun: Normal run.");
             return;
         } else if (savedVersionCode == DOESNT_EXIST) {
             // This is a new install (or the user cleared the shared preferences)
-            Toast.makeText(this, "Downloading initial data", Toast.LENGTH_SHORT).show();
+            Log.d(TAG, "checkFirstRun: Fresh install.");
+            Toast.makeText(this, "Downloading initial data", Toast.LENGTH_LONG).show();
 
             // Download the station information
             new PredictionsStationInfoAsync().execute();
 
-            // Download the next 10 days, just to have something
+            // Download the next 5 days, just to have something
             Intent syncIntent = new Intent(this, TidesSyncIntentService.class);
             syncIntent.putExtra(TidesSyncIntentService.EXTRA_LONG_STARTING_DAY, DateUtils.getStartOfToday());
-            syncIntent.putExtra(TidesSyncIntentService.EXTRA_NUM_DAYS_TO_SYNC, 10);
+            syncIntent.putExtra(TidesSyncIntentService.EXTRA_NUM_DAYS_TO_SYNC, 5);
             startService(syncIntent);
 
             // Setup the shared pref for storing location
@@ -642,6 +649,7 @@ public class MainActivity extends AppCompatActivity
 
         } else if (currentVersionCode > savedVersionCode) {
             // TODO This is an upgrade
+            Log.d(TAG, "checkFirstRun: Upgrade. Not implimented yet.");
 
         }
 
