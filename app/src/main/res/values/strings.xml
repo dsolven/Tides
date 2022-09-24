@@ -6,7 +6,8 @@
     <!--Settings-->
     <string name="pref_location_key">location</string>
     <string name="pref_location_title">Location</string>
-    <string name="pref_location_default">07577</string>
+    <string name="pref_location_default">5cebf1de3d0f4a073c4bb935</string>
+    <string name="location_default_timezone">America/Vancouver</string>
 
     <string name="pref_show_sunrise_key">show_sunrise</string>
     <string name="pref_show_sunrise_title">Show Sunrise/Sunset</string>

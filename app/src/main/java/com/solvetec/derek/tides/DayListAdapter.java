@@ -129,7 +129,7 @@ public class DayListAdapter extends RecyclerView.Adapter<DayListAdapter.DayViewH
             }
             HiloDay hiloDay = mHiloDays.get(listIndex);
 
-            listItemDateTextView.setText(DateUtils.getDateString(hiloDay.timestamp, mContext.getString(R.string.format_date_weekday_date_and_time)));
+//            listItemDateTextView.setText(DateUtils.getDateString(hiloDay.timestamp, mContext.getString(R.string.format_date_weekday_date_and_time)));
 
             // Parse data into single line
             String summary = "";

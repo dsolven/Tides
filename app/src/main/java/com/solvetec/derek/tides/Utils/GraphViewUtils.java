@@ -17,8 +17,12 @@ import com.solvetec.derek.tides.SunriseSunset;
 import com.solvetec.derek.tides.data.TidesContract;
 
 import java.net.URL;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
+import java.util.TimeZone;
 
 /**
  * Created by dsolven on 10/31/2017.
@@ -49,7 +53,7 @@ public class GraphViewUtils {
         return dataPointArray;
     }
 
-    public static void formatGraphBounds(GraphView graphView) {
+    public static void formatGraphBounds(GraphView graphView, final TimeZone timeZone) {
         // TODO: 11/6/2017 Dev: Here are all of the objects inside graphView
         Viewport viewport = graphView.getViewport();
         List<Series> seriesList = graphView.getSeries();
@@ -73,7 +77,7 @@ public class GraphViewUtils {
             @Override
             public String formatLabel(double value, boolean isValueX) {
                 if (isValueX) {
-                    return DateUtils.getDateString(Double.valueOf(value).longValue(), context.getString(R.string.format_date_hours_and_seconds));
+                    return formatDateString(Double.valueOf(value).longValue(), context.getString(R.string.format_date_hours_and_seconds), timeZone);
                 } else {
                     return Double.valueOf(value).toString();
                 }
@@ -82,6 +86,12 @@ public class GraphViewUtils {
             @Override
             public void setViewport(Viewport viewport) {}
         });
+    }
+
+    private static String formatDateString(Long millis, String format, TimeZone timeZone) {
+        SimpleDateFormat sdf = new SimpleDateFormat(format, Locale.US);
+        sdf.setTimeZone(timeZone);
+        return sdf.format(new Date(millis));
     }
 
     public static void formatSeriesColorTide(GraphView graphView) {

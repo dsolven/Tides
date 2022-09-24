@@ -14,6 +14,7 @@ package com.Wsdl2Code.WebServices.PredictionsService;
 //
 
 import com.Wsdl2Code.WebServices.PredictionsService.WS_Enums.*;
+import com.solvetec.derek.tides.dfo_REST.SearchParams;
 
 import java.util.List;
 
@@ -23,7 +24,6 @@ import org.ksoap2.serialization.SoapSerializationEnvelope;
 import org.ksoap2.transport.HttpTransportSE;
 import org.ksoap2.HeaderProperty;
 
-import java.util.Hashtable;
 import java.util.Vector;
 
 import org.ksoap2.serialization.SoapObject;

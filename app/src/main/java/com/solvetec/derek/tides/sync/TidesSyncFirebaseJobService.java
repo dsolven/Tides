@@ -1,5 +1,6 @@
 package com.solvetec.derek.tides.sync;
 
+import com.solvetec.derek.tides.dfo_REST.Station;
 import com.firebase.jobdispatcher.JobParameters;
 import com.firebase.jobdispatcher.JobService;
 import com.solvetec.derek.tides.utils.DateUtils;
@@ -7,7 +8,10 @@ import com.solvetec.derek.tides.utils.DateUtils;
 import android.content.Context;
 import android.util.Log;
 
+import java.util.TimeZone;
+
 import static com.solvetec.derek.tides.sync.TidesSyncIntentTask.syncTides;
+import static com.solvetec.derek.tides.utils.PredictionServiceHelper.getCurrentStation;
 
 /**
  * Created by Derek on 11/23/2017.
@@ -42,9 +46,14 @@ public class TidesSyncFirebaseJobService extends JobService {
     private void doWork(JobParameters jobParameters) {
         Context context = getApplicationContext();
 
+        // Get the current station
+        Station s = getCurrentStation(context);
+        TimeZone timeZone = TimeZone.getTimeZone(s.timezone_id);
+
         // Sync the next N days from today
-        Log.d(TAG, "doWork: Starting sync of " + NUM_DAYS_TO_SYNC + " days from server.");
-        syncTides(context, DateUtils.getStartOfToday(), NUM_DAYS_TO_SYNC);
+        Long startOfToday = DateUtils.getStartOfToday();
+        Log.d(TAG, "doWork: Starting sync of " + NUM_DAYS_TO_SYNC + " days from server, starting with " + startOfToday + ".");
+        syncTides(context, startOfToday, NUM_DAYS_TO_SYNC);
 
         Log.d(TAG, "doWork: Job finished!");
         isWorking = false;

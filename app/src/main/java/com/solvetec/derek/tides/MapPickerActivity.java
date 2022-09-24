@@ -16,7 +16,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 
-import com.Wsdl2Code.WebServices.PredictionsService.Station;
+import com.solvetec.derek.tides.dfo_REST.Station;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
@@ -77,7 +77,8 @@ public class MapPickerActivity extends AppCompatActivity implements
                 TidesEntry.COLUMN_STATION_ID,
                 TidesEntry.COLUMN_STATION_NAME,
                 TidesEntry.COLUMN_STATION_LON,
-                TidesEntry.COLUMN_STATION_LAT });
+                TidesEntry.COLUMN_STATION_LAT,
+                TidesEntry.COLUMN_STATION_TIMEZONE_ID});
         getSupportLoaderManager().initLoader(ID_STATIONS_LOADER, stationsBundle, this);
 
 //        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()

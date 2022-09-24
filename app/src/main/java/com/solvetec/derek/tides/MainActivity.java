@@ -32,8 +32,8 @@ import com.Wsdl2Code.WebServices.PredictionsService.BoundaryDepth;
 import com.Wsdl2Code.WebServices.PredictionsService.BoundarySpatial;
 import com.Wsdl2Code.WebServices.PredictionsService.PredictionsService;
 import com.Wsdl2Code.WebServices.PredictionsService.ResultSet;
-import com.Wsdl2Code.WebServices.PredictionsService.SearchParams;
-import com.Wsdl2Code.WebServices.PredictionsService.Station;
+import com.solvetec.derek.tides.dfo_REST.SearchParams;
+import com.solvetec.derek.tides.dfo_REST.Station;
 import com.Wsdl2Code.WebServices.PredictionsService.VectorMetadata;
 
 import com.jjoe64.graphview.GraphView;
@@ -46,6 +46,8 @@ import com.prolificinteractive.materialcalendarview.DayViewDecorator;
 import com.prolificinteractive.materialcalendarview.DayViewFacade;
 import com.prolificinteractive.materialcalendarview.MaterialCalendarView;
 import com.solvetec.derek.tides.data.TidesContract;
+import com.solvetec.derek.tides.dfo_REST.SomeCustomListener;
+import com.solvetec.derek.tides.dfo_REST.predictionsREST;
 import com.solvetec.derek.tides.sync.SyncUtils;
 import com.solvetec.derek.tides.sync.TidesSyncIntentService;
 import com.solvetec.derek.tides.utils.ConnectivityUtils;
@@ -54,7 +56,12 @@ import com.solvetec.derek.tides.utils.GraphViewUtils;
 import com.solvetec.derek.tides.utils.PredictionServiceHelper;
 import com.solvetec.derek.tides.data.TidesContract.TidesEntry;
 import com.solvetec.derek.tides.utils.SunsetUtils;
+import com.solvetec.derek.tides.utils.TimezoneUtils;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+
+import java.io.IOException;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
@@ -69,7 +76,7 @@ public class MainActivity extends AppCompatActivity
         implements LoaderManager.LoaderCallbacks,
         com.prolificinteractive.materialcalendarview.OnDateSelectedListener{
 
-    private static final String TAG = MainActivity.class.getCanonicalName();
+    private static final String TAG = MainActivity.class.getSimpleName();
     private Toast mProductionToast;
     private GraphView mGraphView;
     private ProgressBar mProgressBarGraph;
@@ -78,15 +85,13 @@ public class MainActivity extends AppCompatActivity
     private OneDayDecorator mOneDayDecorator;
     private TextView mTextViewSelectedDay;
     private Cursor mGraphCursor;
-    public Map<String, Station> mStationsMap;
     private static final int NUM_DAYS_TO_DISPLAY = 14;
     private static final int NUM_WL15_POINTS_TO_DISPLAY = 4 * 24 + 1;
     private static final long NUM_MILLIS_IN_15_MINUTES = 15 * 60 * 1000;
-    private Long mSelectedDay;
+    private Calendar mSelectedDay;
     private String mSelectedStationId;
     private String mPrevSelectedStationId;
-
-    private TimeZone mSelectedStationTimezone;
+    private Station mSelectedStation;
 
     private static final int ID_WL15_LOADER = 44;
     private static final int ID_HILO_LOADER = 45;
@@ -102,6 +107,10 @@ public class MainActivity extends AppCompatActivity
         Log.d(TAG, "onCreate: Started.");
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        // Setup the network manager
+        predictionsREST.getInstance(this);
+        TimezoneUtils.getInstance(this);
 
         // Do any required "first run" initialization
         checkFirstRun();
@@ -120,12 +129,12 @@ public class MainActivity extends AppCompatActivity
         mSyncErrorImageView = findViewById(R.id.iv_sync_error);
 
         // Set selected day to today
-        mSelectedDay = DateUtils.getStartOfToday();
+        mSelectedDay = Calendar.getInstance(TimeZone.getDefault());
 
         // Setup the calendarView
         mCalendarView = findViewById(R.id.cv_main_calendar);
         mCalendarView.setOnDateChangedListener(this);
-        mCalendarView.setDateSelected(new Date(mSelectedDay), true);
+        mCalendarView.setDateSelected(mSelectedDay, true);
         mOneDayDecorator = new OneDayDecorator();
         mCalendarView.addDecorator(mOneDayDecorator);
 
@@ -146,7 +155,11 @@ public class MainActivity extends AppCompatActivity
 
         if(!mPrevSelectedStationId.equals(mSelectedStationId)) {
             // Station has changed
+
+            // Reset station information
+            mPrevSelectedStationId = mSelectedStationId;
             mGraphView.removeAllSeries();
+
         }
 
         // Redraw the calendar decorators, in case the day changed.
@@ -155,7 +168,12 @@ public class MainActivity extends AppCompatActivity
 
         // Create loaders
         // Stations Loader
-        getSupportLoaderManager().initLoader(ID_STATIONS_LOADER, null, this);
+        Bundle stationBundle = new Bundle();
+        String selection = "(" + TidesEntry.COLUMN_STATION_ID + "=?)";
+        String[] selectionArgs = {mSelectedStationId};
+        stationBundle.putString(SELECTION_KEY, selection);
+        stationBundle.putStringArray(SELECTION_ARGS_KEY, selectionArgs);
+        getSupportLoaderManager().restartLoader(ID_STATIONS_LOADER, stationBundle, this);
 
         // HILO Loader
 //        Bundle hiloBundle = new Bundle();
@@ -165,19 +183,6 @@ public class MainActivity extends AppCompatActivity
 //        getSupportLoaderManager().restartLoader(ID_HILO_LOADER, hiloBundle, this);
 
         // TODO: 10/27/2017 Remember to clean up database on every start: If entry is for older than yesterday, remove it.
-
-        // WL15 Loader
-        Bundle bundle = new Bundle();
-        Long selectedDayPlusOne = DateUtils.getStartOfDayAfterThis(mSelectedDay);
-        String[] selectionArgs = {mSelectedStationId, mSelectedDay.toString(), selectedDayPlusOne.toString()};
-        bundle.putStringArray(SELECTION_ARGS_KEY, selectionArgs);
-        getSupportLoaderManager().restartLoader(ID_WL15_LOADER, bundle, this);
-
-
-        Station exampleWhiteRockStation = PredictionServiceHelper.makeExampleStation();
-        GetTimezoneOffset gto = new GetTimezoneOffset();
-        gto.execute(exampleWhiteRockStation);
-
 
 
         // Sunrise and sunset data
@@ -250,8 +255,8 @@ public class MainActivity extends AppCompatActivity
                                 TidesEntry.COLUMN_STATION_LON,
                                 TidesEntry.COLUMN_STATION_LAT,
                                 TidesEntry.COLUMN_STATION_TIMEZONE_ID},
-                        null,
-                        null,
+                        args.getString(SELECTION_KEY),
+                        args.getStringArray(SELECTION_ARGS_KEY),
                         TidesEntry.COLUMN_STATION_ID + " ASC");
             default:
                 throw new RuntimeException("Loader not implemented: " + id);
@@ -340,14 +345,14 @@ public class MainActivity extends AppCompatActivity
                         if(prefShowSunrise){
                             GraphViewUtils.formatSeriesColorSunrise(mGraphView);
                         }
-                        GraphViewUtils.formatGraphBounds(mGraphView);
+                        GraphViewUtils.formatGraphBounds(mGraphView, TimeZone.getTimeZone(mSelectedStation.timezone_id));
 
 
                     } else {
                         // Series already created, just update
                         LineGraphSeries series = (LineGraphSeries) seriesList.get(GraphViewUtils.GRAPH_TIDE);
                         series.resetData(newTidePoints);
-                        GraphViewUtils.formatGraphBounds(mGraphView);
+                        GraphViewUtils.formatGraphBounds(mGraphView, TimeZone.getTimeZone(mSelectedStation.timezone_id));
 
                         // Update current time
                         if(currentTimeIndex >= 0 && currentTimeIndex < newTidePoints.length) {
@@ -367,7 +372,9 @@ public class MainActivity extends AppCompatActivity
                     // Set non-graph texts
                     dataCursor.moveToFirst();
                     Long date = dataCursor.getLong(dataCursor.getColumnIndex(TidesContract.TidesEntry.COLUMN_DATE));
-                    String dateString = DateUtils.getDateString(date, getString(R.string.format_date_weekday_date));
+                    Calendar cal = Calendar.getInstance(TimeZone.getTimeZone(mSelectedStation.timezone_id));
+                    cal.setTime(new Date(date));
+                    String dateString = DateUtils.getDateString(cal, getString(R.string.format_date_weekday_date));
                     mTextViewSelectedDay.setText(dateString);
 
                 } else {
@@ -408,7 +415,7 @@ public class MainActivity extends AppCompatActivity
                         Log.d(TAG, "onLoadFinished: Starting sync of single day.");
 
                         Intent syncSingleDayIntent = new Intent(this, TidesSyncIntentService.class);
-                        syncSingleDayIntent.putExtra(TidesSyncIntentService.EXTRA_LONG_STARTING_DAY, mSelectedDay);
+                        syncSingleDayIntent.putExtra(TidesSyncIntentService.EXTRA_LONG_STARTING_DAY, mSelectedDay.getTimeInMillis());
                         syncSingleDayIntent.putExtra(TidesSyncIntentService.EXTRA_NUM_DAYS_TO_SYNC, 1);
                         startService(syncSingleDayIntent);
                     }
@@ -422,9 +429,48 @@ public class MainActivity extends AppCompatActivity
                 Log.d(TAG, "onLoadFinished: HILO onLoadFinished complete.");
                 break;
             case ID_STATIONS_LOADER:
+                /*
+                Strategy:
+                - Init stations loader in onResume
+                - Once station is loaded, get the timezoneId.
+                    - If timezoneID exists, restart loader for wl15
+                    - If timezoneID doesn't exist, kick off AsyncTask to go get it, and break. This loader will be kicked off again automatically once the db is updated.
+                 */
                 if (dataCursor.getCount() != 0) {
-                    mStationsMap = PredictionServiceHelper.parseStationCursor(dataCursor);
-                    setupTitleBar(mStationsMap);
+                    // Get info from preferred station
+                    String preferredLocationString = sp.getString(getString(R.string.pref_location_key), getString(R.string.pref_location_default));
+                    Map<String, Station> stationsMap = PredictionServiceHelper.parseStationCursor(dataCursor);
+                    mSelectedStation = stationsMap.get(preferredLocationString);
+
+                    // Setup title bar with the selected station name
+                    setupTitleBar(mSelectedStation);
+
+                    if (mSelectedStation.timezone_id != null) {
+                        // Timezone_id is already populated, proceed normally.
+                        Log.d(TAG, "Station onLoadFinished: Timezone_id is already populated, proceed normally.");
+
+                        // WL15 Loader
+                        TimeZone timeZone = TimeZone.getTimeZone(mSelectedStation.timezone_id);
+                        DateUtils du = new DateUtils(timeZone);
+                        mSelectedDay.setTimeZone(timeZone);
+
+                        Bundle bundle = new Bundle();
+                        Long selectedDay = DateUtils.getStartOfDay(mSelectedDay);
+                        Long selectedDayPlusOne = DateUtils.getStartOfDayAfterThis(mSelectedDay);
+                        String[] selectionArgs = {mSelectedStation.station_id, selectedDay.toString(), selectedDayPlusOne.toString()};
+                        bundle.putStringArray(SELECTION_ARGS_KEY, selectionArgs);
+                        getSupportLoaderManager().restartLoader(ID_WL15_LOADER, bundle, this);
+                    } else {
+                        // This is the first time this station has been selected. Go query the timezone.
+                        Log.d(TAG, "Station onLoadFinished: This is the first time this station has been selected. Go query the timezone.");
+
+                        DateUtils.getTimezoneOffset(this,
+                                mSelectedStation.station_id,
+                                mSelectedStation.latitude,
+                                mSelectedStation.longitude,
+                                DateUtils.getRightNow());
+
+                    }
                 } else {
                     Log.d(TAG, "onLoadFinished: ID_STATIONS_LOADER: Datacursor empty.");
                 }
@@ -453,16 +499,18 @@ public class MainActivity extends AppCompatActivity
      */
     @Override
     public void onDateSelected(@NonNull MaterialCalendarView widget, @NonNull CalendarDay date, boolean selected) {
-        Calendar cal = Calendar.getInstance();
-        cal.setTime(date.getDate());
-        mSelectedDay = DateUtils.getStartOfDay(cal.getTimeInMillis());
+        TimeZone timeZone = TimeZone.getTimeZone(mSelectedStation.timezone_id);
+        DateUtils du = new DateUtils(timeZone);
+        mSelectedDay = Calendar.getInstance(timeZone);
+        mSelectedDay.setTime(date.getDate());
         Log.d(TAG, "onSelectedDayChange: Selected day:" + DateUtils.getDateString(mSelectedDay, getString(R.string.format_date_date_and_time)));
 
         // TODO: 11/20/2017 Make a function
         // WL15 Loader
         Bundle bundle = new Bundle();
+        Long selectedDay = DateUtils.getStartOfDay(mSelectedDay);
         Long selectedDayPlusOne = DateUtils.getStartOfDayAfterThis(mSelectedDay);
-        String[] selectionArgs = {mSelectedStationId, mSelectedDay.toString(), selectedDayPlusOne.toString()};
+        String[] selectionArgs = {mSelectedStationId, selectedDay.toString(), selectedDayPlusOne.toString()};
         bundle.putStringArray(SELECTION_ARGS_KEY, selectionArgs);
         getSupportLoaderManager().restartLoader(ID_WL15_LOADER, bundle, this);
     }
@@ -473,51 +521,51 @@ public class MainActivity extends AppCompatActivity
      * Responsible for pulling data from webservice, parsing it, and placing it into the wl15
      * database table.
      */
-    class PredictionsSearchAsync extends AsyncTask<SearchParams, Void, String[]> {
-        @Override
-        protected void onPreExecute() {
-        }
-
-        @Override
-        protected String[] doInBackground(SearchParams... params) {
-            SearchParams sp = params[0];
-            PredictionsService predictionsService = new PredictionsService();
-            predictionsService.setTimeOut(10); // The default of 180ms was often timing out.
-
-            ResultSet searchResult = predictionsService.search(sp);
-            if (searchResult == null) {
-                // Something went wrong, probably no cell reception.
-                return new String[]{sp.dataName, "<Error, no data returned>."};
-            }
-            ContentValues[] cvs = PredictionServiceHelper.parseSearchResultSet(searchResult);
-            String[] out = null;
-            switch (sp.dataName) {
-                case "wl15":
-                    getContentResolver().bulkInsert(TidesEntry.WL15_CONTENT_URI, cvs);
-                    // TODO: 10/26/2017 What to return? Should I do the database insert here?
-                    out = new String[]{sp.dataName, cvs[0].get(TidesEntry.COLUMN_VALUE).toString()};
-                    return out;
-                case "hilo":
-                    getContentResolver().bulkInsert(TidesEntry.HILO_CONTENT_URI, cvs);
-                    // TODO: 10/26/2017 What to return? Should I do the database insert here?
-                    out = new String[]{sp.dataName, cvs[0].get(TidesEntry.COLUMN_VALUE).toString()};
-                    return out;
-                default:
-                    throw new UnsupportedOperationException("Unsupported searchParam dataName: " + sp.dataName);
-            }
-
-        }
-
-        @Override
-        protected void onProgressUpdate(Void... values) {
-
-        }
-
-        @Override
-        protected void onPostExecute(String[] s) {
-            Toast.makeText(MainActivity.this, s[0] + " search completed. First entry is: " + s[1], Toast.LENGTH_SHORT).show();
-        }
-    }
+//    class PredictionsSearchAsync extends AsyncTask<SearchParams, Void, String[]> {
+//        @Override
+//        protected void onPreExecute() {
+//        }
+//
+//        @Override
+//        protected String[] doInBackground(SearchParams... params) {
+//             //            SearchParams sp = params[0];
+//            PredictionsService predictionsService = new PredictionsService();
+//            predictionsService.setTimeOut(10); // The default of 180ms was often timing out.
+//
+//            ResultSet searchResult = predictionsService.search(sp);
+//            if (searchResult == null) {
+//                // Something went wrong, probably no cell reception.
+//                return new String[]{sp.dataName, "<Error, no data returned>."};
+//            }
+//            ContentValues[] cvs = PredictionServiceHelper.parseSearchResultSet(searchResult);
+//            String[] out = null;
+//            switch (sp.dataName) {
+//                case "wl15":
+//                    getContentResolver().bulkInsert(TidesEntry.WL15_CONTENT_URI, cvs);
+//                    // TODO: 10/26/2017 What to return? Should I do the database insert here?
+//                    out = new String[]{sp.dataName, cvs[0].get(TidesEntry.COLUMN_VALUE).toString()};
+//                    return out;
+//                case "hilo":
+//                    getContentResolver().bulkInsert(TidesEntry.HILO_CONTENT_URI, cvs);
+//                    // TODO: 10/26/2017 What to return? Should I do the database insert here?
+//                    out = new String[]{sp.dataName, cvs[0].get(TidesEntry.COLUMN_VALUE).toString()};
+//                    return out;
+//                default:
+//                    throw new UnsupportedOperationException("Unsupported searchParam dataName: " + sp.dataName);
+//            }
+//
+//        }
+//
+//        @Override
+//        protected void onProgressUpdate(Void... values) {
+//
+//        }
+//
+//        @Override
+//        protected void onPostExecute(String[] s) {
+//            Toast.makeText(MainActivity.this, s[0] + " search completed. First entry is: " + s[1], Toast.LENGTH_SHORT).show();
+//        }
+//    }
 
     /**
      * Async task to query station metadata from the webservice.
@@ -525,21 +573,43 @@ public class MainActivity extends AppCompatActivity
     class PredictionsStationInfoAsync extends AsyncTask<Void, Void, String> {
         @Override
         protected String doInBackground(Void... params) {
-            PredictionsService predictionsService = new PredictionsService();
-            predictionsService.setTimeOut(10); // The default of 180ms was often timing out.
-            VectorMetadata vectorMetadata = predictionsService.getMetadata();
-            if (vectorMetadata == null) {
-                // Something went wrong, webservice didn't return data. Probably have no cell reception.
-                return "<Error. Stations not returned>.";
-            }
-            ContentValues[] cvs = PredictionServiceHelper.parseVectorMetadata(vectorMetadata);
-            getContentResolver().bulkInsert(TidesEntry.STATION_INFO_CONTENT_URI, cvs);
-            return cvs[0].get(TidesEntry.COLUMN_STATION_NAME).toString();
+            predictionsREST pr = predictionsREST.getInstance();
+            pr.getJSONArrayFromDFOWebservice("stations", new SomeCustomListener<JSONArray>()
+            {
+                @Override
+                public void getResult(JSONArray result)
+                {
+                    if (!result.isNull(0))
+                    {
+//                        Log.d(TAG, "REST message works: " + result.substring(0,500));
+
+                        ContentValues[] cvs = predictionsREST.parseStationInfo(result);
+                        Log.d(TAG, "PredictionsStationInfoAsync, doInBackground: " + cvs.length + " stations downloaded.");
+                        getContentResolver().bulkInsert(TidesEntry.STATION_INFO_CONTENT_URI, cvs);
+                    }
+                }
+            });
+            return "test string";
+
+//            if (false) {
+//                // Old SOAP webserver
+//                PredictionsService predictionsService = new PredictionsService();
+//                predictionsService.setTimeOut(10); // The default of 180ms was often timing out.
+//                VectorMetadata vectorMetadata = predictionsService.getMetadata();
+//                if (vectorMetadata == null) {
+//                    // Something went wrong, webservice didn't return data. Probably have no cell reception.
+//                    return "<Error. Stations not returned>.";
+//                }
+//                ContentValues[] cvs = PredictionServiceHelper.parseVectorMetadata(vectorMetadata);
+//                Log.d(TAG, "PredictionsStationInfoAsync, doInBackground: " + cvs.length + " stations downloaded.");
+//                getContentResolver().bulkInsert(TidesEntry.STATION_INFO_CONTENT_URI, cvs);
+//                return cvs[0].get(TidesEntry.COLUMN_STATION_NAME).toString();
+//            }
         }
 
         @Override
         protected void onPostExecute(String s) {
-            Toast.makeText(MainActivity.this, "Station download complete. First station is: " + s, Toast.LENGTH_SHORT).show();
+            Toast.makeText(MainActivity.this, "Station download complete.", Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -574,38 +644,39 @@ public class MainActivity extends AppCompatActivity
         }
     }
 
-    class GetTimezoneOffset extends AsyncTask<Station, Void, TimeZone> {
-        @Override
-        protected void onPreExecute() {
-            mSelectedStationTimezone = null; // Reset timezone offset
-        }
-
-        @Override
-        protected TimeZone doInBackground(Station... params) {
-            Station s = params[0];
-            Long currentTimestamp = DateUtils.getRightNow();
-            TimeZone tz = DateUtils.getTimezoneOffset(s.latitude, s.longitude, currentTimestamp);
-            return tz;
-        }
-
-        @Override
-        protected void onPostExecute(TimeZone tz) {
-            mSelectedStationTimezone = tz; // Set timezone offset to valid offset
-            Log.d(TAG, "onPostExecute: Timezone = " + mSelectedStationTimezone);
-            ContentValues cv = new ContentValues(1);
-            cv.put(TidesEntry.COLUMN_STATION_TIMEZONE_ID, mSelectedStationTimezone.getID());
-            String where = "(" + TidesEntry.COLUMN_STATION_ID + " = ? )";
-            String[] selectionArgs = {mSelectedStationId};
-            getContentResolver().update(TidesEntry.STATION_INFO_CONTENT_URI, cv, where, selectionArgs);
-        }
-    }
+//    class GetTimezoneOffset extends AsyncTask<Station, Void, TimeZone> {
+//        @Override
+//        protected void onPreExecute() {
+//        }
+//
+//        @Override
+//        protected TimeZone doInBackground(Station... params) {
+//            Station s = params[0];
+//
+//            // Pass in current timestamp, but it's not actually used in the return info.
+//            Long currentTimestamp = DateUtils.getRightNow();
+//            TimeZone tz = null;
+//            try {
+//                DateUtils.getTimezoneOffset(this, s.station_id, s.latitude, s.longitude, currentTimestamp);
+//            } catch (IOException e) {
+//                e.printStackTrace();
+//            } catch (JSONException e) {
+//                e.printStackTrace();
+//            }
+//            return null;
+//        }
+//
+//        @Override
+//        protected void onPostExecute(Long result) {
+//            showDialog("Downloaded " + result + " bytes");
+//    }
 
     class GetSunriseSunset extends AsyncTask<Void, Void, Void>{
         @Override
         protected Void doInBackground(Void... voids) {
             Log.d(TAG, "doInBackground: getSunriseSunset started.");
             Station exampleStation = PredictionServiceHelper.makeExampleStation();
-            SunriseSunset result = SunsetUtils.getSunriseSunset(exampleStation.latitude, exampleStation.longitude, mSelectedDay);
+            SunriseSunset result = SunsetUtils.getSunriseSunset(exampleStation.latitude, exampleStation.longitude, mSelectedDay, TimeZone.getTimeZone(mSelectedStation.timezone_id));
 
             // TODO: 11/26/2017 This now works. Need to integrate and display it.
             return null;
@@ -623,6 +694,8 @@ public class MainActivity extends AppCompatActivity
         // Get saved version code
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
         int savedVersionCode = prefs.getInt(PREF_VERSION_CODE_KEY, DOESNT_EXIST);
+//        int savedVersionCode = DOESNT_EXIST;
+        //TODO: test code to always do a fresh install
 
         // Check for first run or upgrade
         if (currentVersionCode == savedVersionCode) {
@@ -639,7 +712,7 @@ public class MainActivity extends AppCompatActivity
 
             // Download the next 5 days, just to have something
             Intent syncIntent = new Intent(this, TidesSyncIntentService.class);
-            syncIntent.putExtra(TidesSyncIntentService.EXTRA_LONG_STARTING_DAY, DateUtils.getStartOfToday());
+            syncIntent.putExtra(TidesSyncIntentService.EXTRA_LONG_STARTING_DAY, new DateUtils(TimeZone.getTimeZone(getString(R.string.location_default_timezone))).getStartOfToday());
             syncIntent.putExtra(TidesSyncIntentService.EXTRA_NUM_DAYS_TO_SYNC, 5);
             startService(syncIntent);
 
@@ -668,15 +741,8 @@ public class MainActivity extends AppCompatActivity
                 || "google_sdk".equals(Build.PRODUCT);
     }
 
-    private void setupTitleBar(Map<String, Station> stationMap) {
-        // Get info from preferred station
-        // TODO: 2/12/2018 This is a stupid way of dealing with the data. I'm returning all of it from the database, then parsing it. I should be creating a query on the database itself (one for the full table (map view), and a single entry for the station name).
-        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(this);
-        String preferredLocationString = sp.getString(getString(R.string.pref_location_key), getString(R.string.pref_location_default));
-
-        Station prefStation = stationMap.get(preferredLocationString);
+    private void setupTitleBar(Station prefStation) {
         String title = getString(R.string.app_name) + ": " + prefStation.station_name;
-
         getSupportActionBar().setTitle(title);
     }
 

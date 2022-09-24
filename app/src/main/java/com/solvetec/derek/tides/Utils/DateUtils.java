@@ -1,8 +1,20 @@
 package com.solvetec.derek.tides.utils;
 
 
+import android.content.ContentValues;
+import android.content.Context;
 import android.util.Log;
 
+import com.solvetec.derek.tides.data.TidesContract;
+import com.solvetec.derek.tides.dfo_REST.SomeCustomListener;
+import com.solvetec.derek.tides.dfo_REST.Station;
+import com.solvetec.derek.tides.dfo_REST.predictionsREST;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.IOException;
 import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
@@ -17,63 +29,67 @@ import java.util.TimeZone;
 public class DateUtils {
 
     private static final String TAG = DateUtils.class.getCanonicalName();
+    private TimeZone mTimeZone;
 
-    public static long getRightNow() {
-        Date now = new Date();
-        return now.getTime();
+    public DateUtils(TimeZone timeZone) {
+        this.mTimeZone = timeZone;
+    }
+
+    public static Long getRightNow() {
+        Calendar cal = Calendar.getInstance(TimeZone.getDefault()); // by default, returns right now
+        return cal.getTimeInMillis();
     }
 
     public static Long getStartOfToday() {
-        return getStartOfDay(new Date().getTime());
+        Calendar cal = Calendar.getInstance(TimeZone.getDefault()); // by default, returns right now
+        return getStartOfDay(cal);
     }
 
-    public static Long getStartOfTomorrow() {
-        Calendar cal = Calendar.getInstance(); // by default, returns right now
+    public Long getStartOfTomorrow() {
+        Calendar cal = Calendar.getInstance(mTimeZone); // by default, returns right now
         cal.add(Calendar.DAY_OF_YEAR, 1); // increment by one day
         return getStartOfDay(cal.getTimeInMillis());
     }
 
-    public static Long getStartOfDayOneWeekFromNow() {
-        Calendar cal = Calendar.getInstance(); // by default, returns right now
+    public Long getStartOfDayOneWeekFromNow() {
+        Calendar cal = Calendar.getInstance(mTimeZone); // by default, returns right now
         cal.add(Calendar.DAY_OF_YEAR, 7); // increment by one day
         return getStartOfDay(cal.getTimeInMillis());
     }
 
-    public static Long getStartOfDaySixMonthsFromNow() {
-        Calendar cal = Calendar.getInstance(); // by default, returns right now
+    public Long getStartOfDaySixMonthsFromNow() {
+        Calendar cal = Calendar.getInstance(mTimeZone); // by default, returns right now
         cal.add(Calendar.MONTH, 6); // increment by 6 months
         return getStartOfDay(cal.getTimeInMillis());
     }
 
-    public static Long getStartOfDayNDaysFromNow(int nDays) {
-        Calendar cal = Calendar.getInstance(); // by default, returns right now
+    public Long getStartOfDayNDaysFromNow(int nDays) {
+        Calendar cal = Calendar.getInstance(mTimeZone); // by default, returns right now
         cal.add(Calendar.DAY_OF_YEAR, nDays);
         return getStartOfDay(cal.getTimeInMillis());
     }
 
-    public static Long getFifteenMinutesInMillis() {
+    public Long getFifteenMinutesInMillis() {
         return 15L * 60 * 1000;
     }
 
-    public static Long getStartOfDayAfterThis(Long currentDay) {
-        Calendar cal = Calendar.getInstance(); // by default, returns right now
+    public Long getStartOfDayAfterThis(Long currentDay) {
+        Calendar cal = Calendar.getInstance(mTimeZone); // by default, returns right now
         cal.setTimeInMillis(currentDay);
         cal.add(Calendar.DAY_OF_YEAR, 1);
         return getStartOfDay(cal.getTimeInMillis());
     }
 
-    public static Long getStartOfDayNDaysAfterThis(Long currentDay, int nDays) {
-        Calendar cal = Calendar.getInstance(); // by default, returns right now
+    public Long getStartOfDayNDaysAfterThis(Long currentDay, int nDays) {
+        Calendar cal = Calendar.getInstance(mTimeZone); // by default, returns right now
         cal.setTimeInMillis(currentDay);
         cal.add(Calendar.DAY_OF_YEAR, nDays);
         return getStartOfDay(cal.getTimeInMillis());
     }
 
-    public static Long getStartOfDay(Long millis) {
-        // use UTC time zone
-        Calendar cal = Calendar.getInstance(TimeZone.getDefault());
-        // TODO: 11/6/2017 Hardcoded timezone of phone right now. Need to change this to get the stored timezone, as queried from the google API.
-        // TODO: 11/2/2017 Need to offset the startOfDay by the timezone. We care about getting 0H - 23.75h of the current location.
+    public Long getStartOfDay(Long millis) {
+        Calendar cal = Calendar.getInstance(mTimeZone);
+
         cal.setTimeInMillis(millis);
         cal.set(Calendar.HOUR_OF_DAY, 0);
         cal.set(Calendar.MINUTE, 0);
@@ -83,29 +99,81 @@ public class DateUtils {
         return cal.getTimeInMillis();
     }
 
-    public static TimeZone getTimezoneOffset(Double lat, Double lon, Long timestamp) {
+    public static String getDateString(Calendar cal, String format) {
+        SimpleDateFormat sdf = new SimpleDateFormat(format, Locale.US);
+        sdf.setTimeZone(cal.getTimeZone());
+        return sdf.format(cal.getTime());
+    }
+
+
+
+
+
+
+
+    // Static methods
+
+    // TODO: 2/18/2018 Not sure if I should be passing in a Long or a calculating it internally.
+    public static void getTimezoneOffset(Context context, String stationId, Double lat, Double lon, Long timestamp){
 
         Long timestamp_in_sec = timestamp / 1000;
         URL url = TimezoneUtils.buildTimezoneUrl(lat, lon, timestamp_in_sec);
 
-        try {
-            String response = TimezoneUtils.getResponseFromHttpUrl(url);
-            Log.v(TAG, "getTimezone: " + response);
-            return TimezoneUtils.parseTimezoneResponse(response);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return null;
-        }
+        TimezoneUtils tzu = TimezoneUtils.getInstance();
+        tzu.getJSONObjectFromGoogleTimeZoneWebservice(url.toString(), new SomeCustomListener<JSONObject>()
+        {
+            @Override
+            public void getResult(JSONObject result)  {
+                Log.v(TAG, "getTimezone: " + result);
+                try {
+
+                    TimeZone tz = TimezoneUtils.parseTimezoneResponse(result);
+                    // Parse and update db entry
+                    ContentValues cv = new ContentValues(1);
+                    cv.put(TidesContract.TidesEntry.COLUMN_STATION_TIMEZONE_ID, tz.getID());
+                    String where = "(" + TidesContract.TidesEntry.COLUMN_STATION_ID + " = ? )";
+                    String[] selectionArgs = {stationId};
+                    context.getContentResolver().update(TidesContract.TidesEntry.STATION_INFO_CONTENT_URI, cv, where, selectionArgs);
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+
+
     }
 
     public static String formatForSearchParams(Long millisIn) {
         SimpleDateFormat sdf = new SimpleDateFormat(PredictionServiceHelper.SEARCH_DATE_FORMAT, Locale.CANADA);
+        sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
         return sdf.format(new Date(millisIn));
     }
 
-    public static String getDateString(Long millis, String format) {
-        SimpleDateFormat sdf = new SimpleDateFormat(format);
-        return sdf.format(new Date(millis));
+    public static String formatForRESTQuery(Long millisIn) {
+        SimpleDateFormat sdf = new SimpleDateFormat(PredictionServiceHelper.SEARCH_DATE_FORMAT, Locale.CANADA);
+        sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
+        return sdf.format(new Date(millisIn));
+    }
+
+
+    public static Long getStartOfDay(Calendar inputCal) {
+        Calendar cal = Calendar.getInstance(inputCal.getTimeZone());
+        cal.setTime(inputCal.getTime());
+
+        cal.set(Calendar.HOUR_OF_DAY, 0);
+        cal.set(Calendar.MINUTE, 0);
+        cal.set(Calendar.SECOND, 0);
+        cal.set(Calendar.MILLISECOND, 0);
+
+        return cal.getTimeInMillis();
+    }
+
+    public static Long getStartOfDayAfterThis(Calendar inputCal) {
+        Calendar cal = Calendar.getInstance(inputCal.getTimeZone());
+        cal.setTime(inputCal.getTime());
+
+        cal.add(Calendar.DAY_OF_YEAR, 1);
+        return getStartOfDay(cal);
     }
 
 

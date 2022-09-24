@@ -10,24 +10,21 @@ import android.util.Log;
 import com.Wsdl2Code.WebServices.PredictionsService.Data;
 import com.Wsdl2Code.WebServices.PredictionsService.Metadata;
 import com.Wsdl2Code.WebServices.PredictionsService.ResultSet;
-import com.Wsdl2Code.WebServices.PredictionsService.SearchParams;
-import com.Wsdl2Code.WebServices.PredictionsService.Station;
+import com.solvetec.derek.tides.dfo_REST.SearchParams;
+import com.solvetec.derek.tides.dfo_REST.Station;
 import com.Wsdl2Code.WebServices.PredictionsService.VectorMetadata;
-import com.solvetec.derek.tides.HiloDay;
 import com.solvetec.derek.tides.R;
 import com.solvetec.derek.tides.data.TidesContract;
 import com.solvetec.derek.tides.data.TidesContract.TidesEntry;
-import com.solvetec.derek.tides.sync.SyncUtils;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.TimeZone;
 import java.util.regex.Pattern;
 
 /**
@@ -37,7 +34,7 @@ import java.util.regex.Pattern;
 public class PredictionServiceHelper {
     private static final String TAG = PredictionServiceHelper.class.getCanonicalName();
     public static final int WL15_IN_DAY = 4 * 24; // 4 per hour * 24 hours per day
-    public static final String SEARCH_DATE_FORMAT = "yyyy-MM-dd HH:mm:ss";
+    public static final String SEARCH_DATE_FORMAT = "yyyy-MM-dd'T'HH:mm:ss'Z'";
 
     public static SearchParams makeExampleWl15SearchParams() {
         return new SearchParams(
@@ -80,7 +77,8 @@ public class PredictionServiceHelper {
         double longitude = -122.8058;
         String station_id = "07577";
         String station_name = "White Rock";
-        return new Station(station_id, station_name, latitude, longitude);
+        String timezone_id = "America/Vancouver";
+        return new Station(station_id, station_name, latitude, longitude, timezone_id);
     }
 
 
@@ -88,9 +86,11 @@ public class PredictionServiceHelper {
 
         // Get the current station
         Station s = getCurrentStation(context);
+        TimeZone timeZone = TimeZone.getTimeZone(s.timezone_id);
+        DateUtils du = new DateUtils(timeZone);
 
-        String dateMin = DateUtils.formatForSearchParams(DateUtils.getStartOfDay(startingDay));
-        String dateMax = DateUtils.formatForSearchParams(DateUtils.getStartOfDayNDaysAfterThis(startingDay, numDaysToSearch));
+        String dateMin = DateUtils.formatForSearchParams(du.getStartOfDay(startingDay));
+        String dateMax = DateUtils.formatForSearchParams(du.getStartOfDayNDaysAfterThis(startingDay, numDaysToSearch));
         int sizeMax = WL15_IN_DAY * numDaysToSearch + 1;
         String metadataSelection = "station_id=" + s.station_id;
 
@@ -111,13 +111,43 @@ public class PredictionServiceHelper {
                 "asc");
     }
 
+    public static String getWLPSearchParams(Context context, Long startingDay, int numDaysToSearch) {
+
+        // Get the current station
+        Station s = getCurrentStation(context);
+        TimeZone timeZone = TimeZone.getTimeZone(s.timezone_id);
+        DateUtils du = new DateUtils(timeZone);
+
+        String dateFrom = DateUtils.formatForRESTQuery(du.getStartOfDay(startingDay));
+        String dateTo = DateUtils.formatForRESTQuery(du.getStartOfDayNDaysAfterThis(startingDay, numDaysToSearch));
+
+        return "stations/" + s.station_id + "/data?time-series-code=wlp" + "&from=" + dateFrom + "&to=" + dateTo;
+//        return new SearchParams(
+//                "wl15",
+//                s.latitude - 0.1,
+//                s.latitude + 0.1,
+//                s.longitude - 0.1,
+//                s.longitude + 0.1,
+//                0.0,
+//                0.0,
+//                dateMin,
+//                dateMax,
+//                1,
+//                sizeMax,
+//                true,
+//                metadataSelection,
+//                "asc");
+    }
+
     public static SearchParams getHILOSearchParams(Context context) {
 
         // Get the current station
         Station s = getCurrentStation(context);
+        TimeZone timeZone = TimeZone.getTimeZone(s.timezone_id);
+        DateUtils du = new DateUtils(timeZone);
 
-        String dateMin = DateUtils.formatForSearchParams(DateUtils.getStartOfToday());
-        String dateMax = DateUtils.formatForSearchParams(DateUtils.getStartOfDaySixMonthsFromNow());
+        String dateMin = DateUtils.formatForSearchParams(du.getStartOfToday());
+        String dateMax = DateUtils.formatForSearchParams(du.getStartOfDaySixMonthsFromNow());
         int sizeMax = 1000; // sizeMax is undetermined. Number of hi/lo per day is variable. 1000 should be larger than needed.
         // TODO: 11/2/2017 Right now, this is pulling 6 months worth of data. Change this and maxSize below.
 
@@ -157,10 +187,11 @@ public class PredictionServiceHelper {
             String stationName = resCursor.getString(resCursor.getColumnIndex(TidesContract.TidesEntry.COLUMN_STATION_NAME));
             Double stationLat = resCursor.getDouble(resCursor.getColumnIndex(TidesContract.TidesEntry.COLUMN_STATION_LAT));
             Double stationLon = resCursor.getDouble(resCursor.getColumnIndex(TidesContract.TidesEntry.COLUMN_STATION_LON));
+            String timezoneId = resCursor.getString(resCursor.getColumnIndex(TidesContract.TidesEntry.COLUMN_STATION_TIMEZONE_ID));
             Log.d(TAG, "getCurrentStation: Current station is " + stationName);
 
             resCursor.close();
-            return new Station(stationId, stationName, stationLat, stationLon);
+            return new Station(stationId, stationName, stationLat, stationLon, timezoneId);
         } else {
             Log.d(TAG, "getCurrentStation: Getting current station failed. Returning example station instead");
             return makeExampleStation();
@@ -176,6 +207,7 @@ public class PredictionServiceHelper {
         final int STATION_NAME_INDEX = cursor.getColumnIndex(TidesEntry.COLUMN_STATION_NAME);
         final int STATION_LAT_INDEX = cursor.getColumnIndex(TidesEntry.COLUMN_STATION_LAT);
         final int STATION_LON_INDEX = cursor.getColumnIndex(TidesEntry.COLUMN_STATION_LON);
+        final int STATION_TIMEZONE_ID_INDEX = cursor.getColumnIndex(TidesEntry.COLUMN_STATION_TIMEZONE_ID);
 
         if(cursor.moveToFirst()) {
             do {
@@ -183,7 +215,8 @@ public class PredictionServiceHelper {
                         cursor.getString(STATION_ID_INDEX),
                         cursor.getString(STATION_NAME_INDEX),
                         cursor.getDouble(STATION_LAT_INDEX),
-                        cursor.getDouble(STATION_LON_INDEX));
+                        cursor.getDouble(STATION_LON_INDEX),
+                        cursor.getString(STATION_TIMEZONE_ID_INDEX));
                 stationMap.put(station.station_id, station);
             } while(cursor.moveToNext());
         }
@@ -204,12 +237,15 @@ public class PredictionServiceHelper {
         int size = searchResult.size;
         ContentValues[] cvs = new ContentValues[size];
 
+        SimpleDateFormat sdf = new SimpleDateFormat(SEARCH_DATE_FORMAT, Locale.CANADA);
+        TimeZone utcTimezone = TimeZone.getTimeZone("UTC");
+        sdf.setTimeZone(utcTimezone);
+
         for (int i = 0; i < size; i++) {
             Data d = searchResult.data.get(i);
             ContentValues cv = new ContentValues();
             cv.put(TidesContract.TidesEntry.COLUMN_VALUE, d.value);
 
-            SimpleDateFormat sdf = new SimpleDateFormat(SEARCH_DATE_FORMAT, Locale.CANADA);
             try {
                 Date date = sdf.parse(d.boundaryDate.min); // min and max always contain the same info
                 cv.put(TidesContract.TidesEntry.COLUMN_DATE, date.getTime());
@@ -245,41 +281,41 @@ public class PredictionServiceHelper {
         return station;
     }
 
-    // TODO: 11/5/2017 This is ripe for a unit test
-    public static List<HiloDay> organizeHiloCursorIntoDays(Cursor cursor) {
-
-        int valueColumnIndex = cursor.getColumnIndex(TidesContract.TidesEntry.COLUMN_VALUE);
-        int dateColumnIndex = cursor.getColumnIndex(TidesContract.TidesEntry.COLUMN_DATE);
-
-        List<HiloDay> hiloDays = new ArrayList<>();
-        if (cursor.moveToFirst()) {
-            Long currentDay = DateUtils.getStartOfDay(new Date(cursor.getLong(dateColumnIndex)).getTime());
-            Long lastDay = currentDay;
-            List<Double> todayList = new ArrayList<>();
-            todayList.add(cursor.getDouble(valueColumnIndex));
-            cursor.moveToNext();
-
-            do {
-                currentDay = DateUtils.getStartOfDay(new Date(cursor.getLong(dateColumnIndex)).getTime());
-                if(currentDay.equals(lastDay)) {
-                    // Same day, simply add to existing list
-                    todayList.add(cursor.getDouble(valueColumnIndex));
-                } else {
-                    // New day, start new list
-                    hiloDays.add(new HiloDay(currentDay, new ArrayList<>(todayList)));
-                    todayList.clear();
-                    todayList.add(cursor.getDouble(valueColumnIndex));
-                }
-
-                lastDay = currentDay;
-            } while (cursor.moveToNext());
-
-            // Handle last entry
-            hiloDays.add(new HiloDay(currentDay, new ArrayList<>(todayList)));
-        }
-
-        return hiloDays;
-    }
+//    // TODO: 11/5/2017 This is ripe for a unit test
+//    public static List<HiloDay> organizeHiloCursorIntoDays(Cursor cursor) {
+//
+//        int valueColumnIndex = cursor.getColumnIndex(TidesContract.TidesEntry.COLUMN_VALUE);
+//        int dateColumnIndex = cursor.getColumnIndex(TidesContract.TidesEntry.COLUMN_DATE);
+//
+//        List<HiloDay> hiloDays = new ArrayList<>();
+//        if (cursor.moveToFirst()) {
+//            Long currentDay = DateUtils.getStartOfDay(new Date(cursor.getLong(dateColumnIndex)).getTime());
+//            Long lastDay = currentDay;
+//            List<Double> todayList = new ArrayList<>();
+//            todayList.add(cursor.getDouble(valueColumnIndex));
+//            cursor.moveToNext();
+//
+//            do {
+//                currentDay = DateUtils.getStartOfDay(new Date(cursor.getLong(dateColumnIndex)).getTime());
+//                if(currentDay.equals(lastDay)) {
+//                    // Same day, simply add to existing list
+//                    todayList.add(cursor.getDouble(valueColumnIndex));
+//                } else {
+//                    // New day, start new list
+//                    hiloDays.add(new HiloDay(currentDay, new ArrayList<>(todayList)));
+//                    todayList.clear();
+//                    todayList.add(cursor.getDouble(valueColumnIndex));
+//                }
+//
+//                lastDay = currentDay;
+//            } while (cursor.moveToNext());
+//
+//            // Handle last entry
+//            hiloDays.add(new HiloDay(currentDay, new ArrayList<>(todayList)));
+//        }
+//
+//        return hiloDays;
+//    }
 
     /**
      * This helper method parses the data returned from a getMetadata webservice request, and places

@@ -13,7 +13,9 @@ import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.Calendar;
 import java.util.Scanner;
+import java.util.TimeZone;
 
 /**
  * Created by Derek on 11/25/2017.
@@ -35,9 +37,9 @@ public class SunsetUtils {
 
     private static final String TZ_STATUS = "status";
 
-    public static SunriseSunset getSunriseSunset(Double lat, Double lon, Long date) {
+    public static SunriseSunset getSunriseSunset(Double lat, Double lon, Calendar cal, TimeZone timeZone) {
 
-        String dateString = DateUtils.getDateString(date, SunsetUtils.DATE_FORMAT);
+        String dateString = DateUtils.getDateString(cal, SunsetUtils.DATE_FORMAT);
         URL url = SunsetUtils.buildSunsetUrl(lat, lon, dateString);
 
         try {
