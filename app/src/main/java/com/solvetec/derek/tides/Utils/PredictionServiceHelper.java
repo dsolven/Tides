@@ -75,7 +75,7 @@ public class PredictionServiceHelper {
     public static Station makeExampleStation() {
         double latitude = 49.0211;
         double longitude = -122.8058;
-        String station_id = "07577";
+        String station_id = "5cebf1de3d0f4a073c4bb935";
         String station_name = "White Rock";
         String timezone_id = "America/Vancouver";
         return new Station(station_id, station_name, latitude, longitude, timezone_id);

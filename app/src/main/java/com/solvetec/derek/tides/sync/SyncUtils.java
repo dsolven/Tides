@@ -1,16 +1,17 @@
 package com.solvetec.derek.tides.sync;
 
 import android.content.Context;
-import android.support.annotation.NonNull;
+import androidx.annotation.NonNull;
 import android.util.Log;
 
-import com.firebase.jobdispatcher.Constraint;
-import com.firebase.jobdispatcher.Driver;
-import com.firebase.jobdispatcher.FirebaseJobDispatcher;
-import com.firebase.jobdispatcher.GooglePlayDriver;
-import com.firebase.jobdispatcher.Job;
-import com.firebase.jobdispatcher.Lifetime;
-import com.firebase.jobdispatcher.Trigger;
+import androidx.work.Data;
+import androidx.work.Constraints;
+import androidx.work.Constraints.Builder;
+import androidx.work.ExistingPeriodicWorkPolicy;
+import androidx.work.NetworkType;
+import androidx.work.Operation;
+import androidx.work.PeriodicWorkRequest;
+import androidx.work.WorkManager;
 
 import java.util.concurrent.TimeUnit;
 
@@ -37,23 +38,20 @@ public class SyncUtils {
             return;
         }
 
-        Driver driver = new GooglePlayDriver(context);
-        FirebaseJobDispatcher dispatcher = new FirebaseJobDispatcher(driver);
-
-        Job constraintSyncJob = dispatcher.newJobBuilder()
-                .setService(TidesSyncFirebaseJobService.class)
-                .setTag(SYNC_JOB_TAG)
-                .setConstraints(Constraint.DEVICE_CHARGING, Constraint.ON_UNMETERED_NETWORK)
-                .setLifetime(Lifetime.FOREVER)
-                .setRecurring(true)
-                .setTrigger(Trigger.executionWindow(
-                        SYNC_INTERVAL_SECONDS,
-                        SYNC_INTERVAL_SECONDS + SYNC_FLEXTIME_SECONDS))
-                .setReplaceCurrent(true)
+        Constraints constraints = new Constraints.Builder()
+                .setRequiredNetworkType(NetworkType.UNMETERED)
+                .setRequiresCharging(true)
                 .build();
 
-        int scheduleResult = dispatcher.schedule(constraintSyncJob);
-        Log.d(TAG, "scheduleBackgroundSync: Job scheduled, with result " + scheduleResult);
+        PeriodicWorkRequest request =
+                new PeriodicWorkRequest.Builder(TidesSyncWorkManagerJobService.class, SYNC_INTERVAL_HOURS, TimeUnit.HOURS)
+                        .build();
+
+        Operation operation = WorkManager.getInstance(context)
+                .enqueueUniquePeriodicWork(SYNC_JOB_TAG, ExistingPeriodicWorkPolicy.REPLACE, request);
+
+
+        Log.d(TAG, "scheduleBackgroundSync: Job scheduled, with result " + operation.getResult().toString());
 
         sInitialized = true;
     }

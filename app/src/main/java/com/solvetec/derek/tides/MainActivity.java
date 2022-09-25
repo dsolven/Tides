@@ -10,11 +10,11 @@ import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
-import android.support.annotation.NonNull;
-import android.support.v4.app.LoaderManager;
-import android.support.v4.content.CursorLoader;
-import android.support.v4.content.Loader;
-import android.support.v7.app.AppCompatActivity;
+import androidx.annotation.NonNull;
+import androidx.loader.app.LoaderManager;
+import androidx.loader.content.CursorLoader;
+import androidx.loader.content.Loader;
+import androidx.appcompat.app.AppCompatActivity;
 import android.text.style.RelativeSizeSpan;
 import android.text.style.StyleSpan;
 import android.util.Log;
@@ -59,9 +59,7 @@ import com.solvetec.derek.tides.utils.SunsetUtils;
 import com.solvetec.derek.tides.utils.TimezoneUtils;
 
 import org.json.JSONArray;
-import org.json.JSONException;
 
-import java.io.IOException;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
@@ -173,7 +171,7 @@ public class MainActivity extends AppCompatActivity
         String[] selectionArgs = {mSelectedStationId};
         stationBundle.putString(SELECTION_KEY, selection);
         stationBundle.putStringArray(SELECTION_ARGS_KEY, selectionArgs);
-        getSupportLoaderManager().restartLoader(ID_STATIONS_LOADER, stationBundle, this);
+        LoaderManager.getInstance(this).initLoader(ID_STATIONS_LOADER, stationBundle, this);
 
         // HILO Loader
 //        Bundle hiloBundle = new Bundle();
@@ -210,6 +208,7 @@ public class MainActivity extends AppCompatActivity
                 startActivity(new Intent(this, SettingsActivity.class));
                 return true;
             case R.id.action_map:
+                LoaderManager.getInstance(this).destroyLoader(ID_STATIONS_LOADER);
                 startActivity(new Intent (this, MapPickerActivity.class));
             default:
                 return super.onOptionsItemSelected(item);
@@ -442,6 +441,10 @@ public class MainActivity extends AppCompatActivity
                     Map<String, Station> stationsMap = PredictionServiceHelper.parseStationCursor(dataCursor);
                     mSelectedStation = stationsMap.get(preferredLocationString);
 
+                    if (mSelectedStation == null) {
+                        Log.d(TAG, "ID_STATIONS_LOADER: Wrong station returned. Something went wrong setting up the loader, probably after changing the selected station.");
+                        break;
+                    }
                     // Setup title bar with the selected station name
                     setupTitleBar(mSelectedStation);
 
@@ -515,58 +518,6 @@ public class MainActivity extends AppCompatActivity
         getSupportLoaderManager().restartLoader(ID_WL15_LOADER, bundle, this);
     }
 
-
-    /**
-     * Async task to query Predictions webservice.
-     * Responsible for pulling data from webservice, parsing it, and placing it into the wl15
-     * database table.
-     */
-//    class PredictionsSearchAsync extends AsyncTask<SearchParams, Void, String[]> {
-//        @Override
-//        protected void onPreExecute() {
-//        }
-//
-//        @Override
-//        protected String[] doInBackground(SearchParams... params) {
-//             //            SearchParams sp = params[0];
-//            PredictionsService predictionsService = new PredictionsService();
-//            predictionsService.setTimeOut(10); // The default of 180ms was often timing out.
-//
-//            ResultSet searchResult = predictionsService.search(sp);
-//            if (searchResult == null) {
-//                // Something went wrong, probably no cell reception.
-//                return new String[]{sp.dataName, "<Error, no data returned>."};
-//            }
-//            ContentValues[] cvs = PredictionServiceHelper.parseSearchResultSet(searchResult);
-//            String[] out = null;
-//            switch (sp.dataName) {
-//                case "wl15":
-//                    getContentResolver().bulkInsert(TidesEntry.WL15_CONTENT_URI, cvs);
-//                    // TODO: 10/26/2017 What to return? Should I do the database insert here?
-//                    out = new String[]{sp.dataName, cvs[0].get(TidesEntry.COLUMN_VALUE).toString()};
-//                    return out;
-//                case "hilo":
-//                    getContentResolver().bulkInsert(TidesEntry.HILO_CONTENT_URI, cvs);
-//                    // TODO: 10/26/2017 What to return? Should I do the database insert here?
-//                    out = new String[]{sp.dataName, cvs[0].get(TidesEntry.COLUMN_VALUE).toString()};
-//                    return out;
-//                default:
-//                    throw new UnsupportedOperationException("Unsupported searchParam dataName: " + sp.dataName);
-//            }
-//
-//        }
-//
-//        @Override
-//        protected void onProgressUpdate(Void... values) {
-//
-//        }
-//
-//        @Override
-//        protected void onPostExecute(String[] s) {
-//            Toast.makeText(MainActivity.this, s[0] + " search completed. First entry is: " + s[1], Toast.LENGTH_SHORT).show();
-//        }
-//    }
-
     /**
      * Async task to query station metadata from the webservice.
      */
@@ -590,21 +541,6 @@ public class MainActivity extends AppCompatActivity
                 }
             });
             return "test string";
-
-//            if (false) {
-//                // Old SOAP webserver
-//                PredictionsService predictionsService = new PredictionsService();
-//                predictionsService.setTimeOut(10); // The default of 180ms was often timing out.
-//                VectorMetadata vectorMetadata = predictionsService.getMetadata();
-//                if (vectorMetadata == null) {
-//                    // Something went wrong, webservice didn't return data. Probably have no cell reception.
-//                    return "<Error. Stations not returned>.";
-//                }
-//                ContentValues[] cvs = PredictionServiceHelper.parseVectorMetadata(vectorMetadata);
-//                Log.d(TAG, "PredictionsStationInfoAsync, doInBackground: " + cvs.length + " stations downloaded.");
-//                getContentResolver().bulkInsert(TidesEntry.STATION_INFO_CONTENT_URI, cvs);
-//                return cvs[0].get(TidesEntry.COLUMN_STATION_NAME).toString();
-//            }
         }
 
         @Override
@@ -613,63 +549,6 @@ public class MainActivity extends AppCompatActivity
         }
     }
 
-
-    /**
-     * Testing calls to PredictionsService, and verify each SOAP_ACTION actually works.
-     */
-    class PredictionsTestAllAsync extends AsyncTask<String, Void, String> {
-
-        @Override
-        protected void onPostExecute(String s) {
-            Toast.makeText(MainActivity.this, "TestAllPredictions returned: " + s, Toast.LENGTH_SHORT).show();
-        }
-        @Override
-        protected String doInBackground(String... params) {
-            PredictionsService predictionsService = new PredictionsService();
-            predictionsService.setTimeOut(10); // The default of 180ms was often timing out.
-            String info = predictionsService.getInfo();
-            String version = predictionsService.getVersion();
-            BoundaryDepth boundaryDepth = predictionsService.getBoundaryDepth();
-            BoundarySpatial boundarySpatial = predictionsService.getBoundarySpatial();
-            String name = predictionsService.getName();
-            VectorMetadata vectorMetadata = predictionsService.getMetadata();
-            BoundaryDate boundaryDate = predictionsService.getBoundaryDate();
-            VectorMetadata vectorDataInfo = predictionsService.getDataInfo();
-            VectorMetadata vectorMetaDataInfo = predictionsService.getMetadataInfo();
-
-            SearchParams sp = PredictionServiceHelper.makeExampleWl15SearchParams();
-            ResultSet searchResult = predictionsService.search(sp);
-
-            return info;
-        }
-    }
-
-//    class GetTimezoneOffset extends AsyncTask<Station, Void, TimeZone> {
-//        @Override
-//        protected void onPreExecute() {
-//        }
-//
-//        @Override
-//        protected TimeZone doInBackground(Station... params) {
-//            Station s = params[0];
-//
-//            // Pass in current timestamp, but it's not actually used in the return info.
-//            Long currentTimestamp = DateUtils.getRightNow();
-//            TimeZone tz = null;
-//            try {
-//                DateUtils.getTimezoneOffset(this, s.station_id, s.latitude, s.longitude, currentTimestamp);
-//            } catch (IOException e) {
-//                e.printStackTrace();
-//            } catch (JSONException e) {
-//                e.printStackTrace();
-//            }
-//            return null;
-//        }
-//
-//        @Override
-//        protected void onPostExecute(Long result) {
-//            showDialog("Downloaded " + result + " bytes");
-//    }
 
     class GetSunriseSunset extends AsyncTask<Void, Void, Void>{
         @Override

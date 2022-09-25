@@ -2,7 +2,7 @@ package com.solvetec.derek.tides.sync;
 
 import android.app.IntentService;
 import android.content.Intent;
-import android.support.annotation.Nullable;
+import androidx.annotation.Nullable;
 
 /**
  * Created by dsolven on 11/1/2017.

@@ -24,11 +24,13 @@
 
         <activity
             android:name=".SettingsActivity"
+            android:exported="true"
             android:label="Settings"
             android:parentActivityName="com.solvetec.derek.tides.MainActivity" />
 
         <activity
             android:name=".MapPickerActivity"
+            android:exported="true"
             android:label="@string/title_map"
             android:parentActivityName=".MainActivity"/>
 
@@ -41,7 +43,7 @@
             android:name=".sync.TidesSyncIntentService"
             android:exported="false" />
         <service
-            android:name=".sync.TidesSyncFirebaseJobService"
+            android:name=".sync.TidesSyncWorkManagerJobService"
             android:exported="false">
             <intent-filter>
                 <action android:name="com.firebase.jobdispatcher.ACTION_EXECUTE"/>
